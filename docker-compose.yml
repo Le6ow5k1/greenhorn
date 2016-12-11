@@ -1,0 +1,42 @@
+version: '2'
+
+services:
+  clojure:
+    image: clojure:latest
+    env_file:
+      - .env
+    command: bash
+
+  app:
+    extends:
+      service: clojure
+    working_dir: /app
+    volumes:
+      - .:/app
+      - $HOME/.m2:/root/.m2
+    depends_on:
+      - postgres
+
+  postgres:
+    image: postgres:9.6
+    environment:
+      - POSTGRES_DB=greenhorn
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+  web:
+    extends:
+      service: clojure
+    working_dir: /app
+    command: lein ring server-headless
+    ports:
+      - 3000:3000
+    volumes:
+      - .:/app
+      - $HOME/.m2:/root/.m2
+    depends_on:
+      - postgres
+
+volumes:
+  pg-data:
+    driver: local

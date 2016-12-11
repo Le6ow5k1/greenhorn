@@ -1,0 +1,2 @@
+{:up   ["CREATE TABLE pulls (repo varchar NOT NULL, num integer NOT NULL, comment_id integer NOT NULL);"]
+ :down ["DROP TABLE pulls"]}

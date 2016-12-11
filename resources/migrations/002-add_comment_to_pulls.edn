@@ -1,0 +1,2 @@
+{:up   ["ALTER TABLE pulls ADD COLUMN comment varchar(1024);"]
+ :down ["ALTER TABLE pulls DROP COLUMN comment"]}

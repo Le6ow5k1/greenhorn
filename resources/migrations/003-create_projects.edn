@@ -1,0 +1,6 @@
+{:up   ["CREATE TABLE projects (id SERIAL PRIMARY KEY,
+                                name varchar NOT NULL,
+                                full_name varchar NOT NULL,
+                                gems_org varchar NOT NULL);
+        CREATE INDEX on projects (full_name);"]
+ :down ["DROP TABLE projects;"]}
