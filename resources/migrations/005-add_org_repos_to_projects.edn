@@ -1,0 +1,2 @@
+{:up   ["ALTER TABLE projects ADD COLUMN org_repos varchar[];"]
+ :down ["ALTER TABLE projects DROP COLUMN org_repos;"]}

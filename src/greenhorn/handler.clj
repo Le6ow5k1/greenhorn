@@ -16,9 +16,11 @@
   (views/index (db/projects)))
 
 (defn create-project [{:keys [name full-name gems-org]}]
-  (do
-   (db/create-project {:name name :full_name full-name :gems_org gems-org})
-   (redirect "/")))
+  (let [[{id :id}] (db/create-project {:name name :full_name full-name :gems_org gems-org})]
+    (if id
+      (do (github/store-project-org-repos-async id gems-org)
+          (redirect "/"))
+      (views/add-project))))
 
 (defn edit-project [id]
   (let [project (db/find-project-by {:id (Integer/parseInt id)})]
@@ -27,9 +29,12 @@
       (redirect "/"))))
 
 (defn update-project [id {:keys [name full-name gems-org]}]
-  (do
-    (db/update-project id {:name name :full_name full-name :gems_org gems-org})
-    (redirect "/")))
+  (let [project {:name name :full_name full-name :gems_org gems-org}
+        [updated?] (db/update-project id project)]
+    (if updated?
+      (do (github/store-project-org-repos-async id gems-org)
+          (redirect "/"))
+      (views/edit-project (assoc project :id id)))))
 
 (defroutes app-routes
   (GET "/" [] (views/index (db/projects)))

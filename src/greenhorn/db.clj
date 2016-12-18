@@ -1,26 +1,26 @@
 (ns greenhorn.db
-  (:require [clojure.java.jdbc :as jdbc])
-  (:require [clojure.string :as str]))
+  (:require [clojure.java.jdbc :as jdbc]
+            [clojure.string :as str])
+  (:import org.postgresql.jdbc4.Jdbc4Array
+           clojure.lang.IPersistentVector))
 
-(def ^:const db-uri (System/getenv "PG_URI"))
+(def ^:const db-uri (or (System/getenv "PG_URI") "postgresql://localhost:5432/greenhorn"))
 
-(defn- key-underscore [key]
-  (-> key
-      str
-      (str/replace #"/-+" "_")
-      keyword))
+(extend-protocol jdbc/IResultSetReadColumn
+  Jdbc4Array
+  (result-set-read-column [v _ _] (vec (.getArray v))))
 
-(defn- underscore-keys [attrs]
-  (reduce-kv
-   (fn [m k v] (assoc m (key-underscore k) v) )
-   {}
-   attrs))
+(extend-protocol jdbc/ISQLValue
+  IPersistentVector
+  (sql-value [v]
+    (let [conn (jdbc/get-connection db-uri)]
+      (.createArrayOf conn "varchar" (into-array String v)))))
 
 (defn create-pull [attrs]
   (jdbc/insert! db-uri :pulls attrs))
 
 (defn update-pull [num attrs]
-  (jdbc/update! db-uri :pulls attrs ["num = ?", num]))
+  (jdbc/update! db-uri :pulls attrs ["num = ?" num]))
 
 (defn find-pull [project-id num]
   (let [result (jdbc/find-by-keys db-uri :pulls {:project_id project-id :num num})]
@@ -29,15 +29,16 @@
 (defn pulls []
   (jdbc/query db-uri ["select * from pulls"]))
 
-(defn projects []
-  (jdbc/query db-uri ["select * from projects"]))
+(defn projects
+  ([] (jdbc/query db-uri ["select * from projects"]))
+  ([attrs] (jdbc/find-by-keys db-uri :projects attrs)))
 
 (defn find-project-by [attrs]
-  (let [result (jdbc/find-by-keys db-uri :projects attrs)]
-    (first result)))
+  (first (projects attrs)))
 
 (defn create-project [attrs]
   (jdbc/insert! db-uri :projects attrs))
 
 (defn update-project [id attrs]
-  (jdbc/update! db-uri :projects attrs ["id = ?", (Integer/parseInt id)]))
+  (let [parsed-id (if (integer? id) id (Integer/parseInt id))]
+    (jdbc/update! db-uri :projects attrs ["id = ?", parsed-id])))

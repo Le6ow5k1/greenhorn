@@ -5,13 +5,24 @@
             [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.string :as str]
-            [taoensso.timbre :as timbre]))
+            [taoensso.timbre :as timbre]
+            [tentacles.repos :as repos-api]))
 
 (def ^:private token (System/getenv "GITHUB_TOKEN"))
 (def ^:private user (System/getenv "GITHUB_USER"))
 (def ^:private api-url (str "https://" user ":" token "@api.github.com/"))
 (def ^:private html-url (str "https://github.com/"))
 (def ^:private lockfile-path "Gemfile.lock")
+
+(defn org-repos [org]
+  (repos-api/org-repos org {:auth (str user ":" token) :all-pages true}))
+
+(defn store-project-org-repos [id org]
+  (let [repos-names (mapv #(% :name) (org-repos org))]
+    (db/update-project id {:org_repos repos-names})))
+
+(defn store-project-org-repos-async [id org]
+  (bg/submit-job store-project-org-repos id org))
 
 (defn- repo-content [repo path & params]
   (let [url (str api-url "repos/" repo "/contents/" path)]
@@ -51,23 +62,29 @@
 (defn- build-compare-url [gem-url old-gem new-gem]
   (str gem-url "/compare/" (gem-compare-ref old-gem) "..." (gem-compare-ref new-gem)))
 
-(defn- comment-for-diff [gems-org [name [old-gem new-gem]]]
-  (let [gem-url (str html-url gems-org "/" name)]
-    (cond
-      (and (nil? old-gem)
-           (not (nil? new-gem))) (str "Gem `" gem-url "` has been **added**")
-      (and (nil? new-gem)
-           (not (nil? old-gem))) (str "Gem `" gem-url "` has been **deleted**")
-      :else (str "Gem `" name "` has been **updated** " (build-compare-url gem-url old-gem new-gem)))))
+(defn- comment-for-diff [gems-org gem-repo-present? [name [old-gem new-gem]]]
+  (cond
+    (and (nil? old-gem)
+         (not (nil? new-gem))) (str "Gem `" name "` has been **added**")
+    (and (nil? new-gem)
+         (not (nil? old-gem))) (str "Gem `" name "` has been **deleted**")
+    :else (let [gem-url (str html-url gems-org "/" name)
+                updated-str (str "Gem `" name "` has been **updated**")]
+            (if gem-repo-present?
+              (str updated-str " " (build-compare-url gem-url old-gem new-gem))
+              updated-str))))
 
-(defn- gem-diffs->comment [gems-org diffs]
+(defn- gem-diffs->comment [gems-org org-repos diffs]
   (->> diffs
-       (mapv #(comment-for-diff gems-org %))
+       (mapv
+        (fn [[name _ :as diff]]
+          (comment-for-diff gems-org (some #{name} org-repos) diff)))
        (str/join "\n")))
 
-(defn- create-or-update-pull-comment [{project-id :id repo-path :full_name gems-org :gems_org} pull-num diff]
+(defn- create-or-update-pull-comment
+  [{project-id :id repo-path :full_name gems-org :gems_org org-repos :org_repos} pull-num diff]
   (let [{saved-comment-id :comment_id} (db/find-pull project-id pull-num)
-        compare-urls (gem-diffs->comment gems-org diff)]
+        compare-urls (gem-diffs->comment gems-org org-repos diff)]
     (if saved-comment-id
       (let [{comment-id :id} (update-pull-comment repo-path saved-comment-id compare-urls)]
         (if comment-id

@@ -38,7 +38,7 @@
             [:span.glyphicon.glyphicon-pencil]]])]]
       [:div.col-md-2]]]]))
 
-(defn- project-form [action method button-text {:keys [id name full_name gems_org]}]
+(defn- project-form [action method button-text {:keys [id name full_name gems_org org_repos]}]
   [:form {:action action :method method}
    (anti-forgery-field)
    [:div.form-group
@@ -50,7 +50,16 @@
    [:div.form-group
     [:label {:for "gems-org"} "Gems Organisation"]
     [:input.form-control {:id "gems-org" :name "gems-org" :type "text" :placeholder "rails" :value gems_org}]
-    [:span.help-block "Organisation or user on Github where gems repositories can be found."]]
+    [:span.help-block "Organisation on Github where gems repositories can be found."]
+    (if (empty? org_repos)
+      [:span.text-muted "List of gems in given organisation will be fetched after save."]
+      (do
+        [:div
+         [:span.glyphicon.glyphicon-triangle-right {:style "padding-right: 1%; cursor: pointer;"
+                                                    :onclick "var el = getElementById('js-repos-list'); el.className = el.className.replace(/hidden/g , '')"}]
+         [:span.text-muted "Current list of gems in given organisation. Will be updated after save."]]))
+    [:ul#js-repos-list.list-inline.text-muted.small.hidden
+     (for [repo org_repos] [:li repo])]]
    [:button.btn.btn-default {:type "submit"} button-text]])
 
 (defn add-project []
@@ -62,7 +71,7 @@
      [:div.row
       [:div.col-md-2]
       [:div.col-md-8
-       [:ul.center-block
+       [:div.center-block
         (project-form "/projects" "POST" "Create" {})]]
       [:div.col-md-2]]]]))
 
@@ -75,6 +84,6 @@
      [:div.row
       [:div.col-md-2]
       [:div.col-md-8
-       [:ul.center-block
+       [:div.center-block
         (project-form (str "/projects/" (project :id)) "POST" "Update" project)]]
       [:div.col-md-2]]]]))

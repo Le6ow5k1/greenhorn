@@ -14,7 +14,8 @@
                  [ragtime "0.6.3"]
                  [org.clojure/core.async "0.2.395"]
                  [com.taoensso/timbre "4.7.4"]
-                 [ring-logger-timbre "0.7.5"]]
+                 [ring-logger-timbre "0.7.5"]
+                 [tentacles "0.5.1"]]
   :plugins [[lein-ring "0.9.7"]]
   :ring {:handler greenhorn.handler/app
          :init greenhorn.handler/init
