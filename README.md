@@ -1,18 +1,20 @@
 # greenhorn
 
-FIXME
+[![CircleCI](https://circleci.com/gh/Le6ow5k1/greenhorn.svg?style=svg)](https://circleci.com/gh/Le6ow5k1/greenhorn)
 
-## Prerequisites
+Bot that checks github PS's for changed dependencies in Gemfile.lock.
 
-You will need [Leiningen][] 2.0.0 or above installed.
+## Development
 
-[leiningen]: https://github.com/technomancy/leiningen
-
-## Running
+You will need Docker and Docker-compose installed.
 
 To start a web server for the application, run:
 
-    lein ring server
+    docker-compose up web
+
+## Test
+
+    docker-compose run app lein test
 
 ## License
 
