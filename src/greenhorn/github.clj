@@ -55,12 +55,12 @@
       (json/parse-string body true))))
 
 (defn- gem-compare-ref [{:keys [version revision]}]
-  (if version
-    (->> version (take 8) (apply (partial str "v")))
-    revision))
+  (if revision
+    (->> revision (take 8) (apply str))
+    (str "v" version)))
 
-(defn- build-compare-url [gem-url old-gem new-gem]
-  (str gem-url "/compare/" (gem-compare-ref old-gem) "..." (gem-compare-ref new-gem)))
+(defn- gem-compare-str [old-gem new-gem]
+  (str (gem-compare-ref old-gem) "..." (gem-compare-ref new-gem)))
 
 (defn- comment-for-diff [gems-org gem-repo-present? [name [old-gem new-gem]]]
   (cond
@@ -71,11 +71,12 @@
     :else (let [gem-url (str html-url gems-org "/" name)
                 updated-str (str "Gem `" name "` has been **updated**")]
             (if gem-repo-present?
-              (str updated-str " " (build-compare-url gem-url old-gem new-gem))
-              updated-str))))
+              (str updated-str " " gem-url "/compare/" (gem-compare-str old-gem new-gem))
+              (str updated-str " " (gem-compare-str old-gem new-gem))))))
 
 (defn- gem-diffs->comment [gems-org org-repos diffs]
   (->> diffs
+       (sort-by first)
        (mapv
         (fn [[name _ :as diff]]
           (comment-for-diff gems-org (some #{name} org-repos) diff)))
