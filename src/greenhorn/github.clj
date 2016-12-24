@@ -104,8 +104,11 @@
     (if-not (empty? diff)
       (create-or-update-pull-comment project pull-num diff))))
 
+(bg/define-worker handle-pull-webhook-worker [project pull]
+  (handle-pull-webhook project pull))
+
 (defn handle-pull-webhook-async [{action :action pull :pull_request}]
   (let [{{{full-name :full_name} :repo} :base} pull
         project (db/find-project-by {:full_name full-name})]
     (if (and project pull (contains? #{"opened" "reopened" "synchronize"} action))
-      (bg/submit-job handle-pull-webhook project pull))))
+      (bg/submit-job handle-pull-webhook-worker project pull))))
