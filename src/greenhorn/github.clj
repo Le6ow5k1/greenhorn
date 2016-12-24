@@ -1,5 +1,5 @@
 (ns greenhorn.github
-  (:require [greenhorn.gemfile-parsing :refer [diff-lock-files]]
+  (:require [greenhorn.gemfile-parsing :as parsing]
             [greenhorn.background :as bg]
             [greenhorn.db :as db]
             [cheshire.core :as json]
@@ -10,8 +10,8 @@
 
 (def ^:private token (System/getenv "GITHUB_TOKEN"))
 (def ^:private user (System/getenv "GITHUB_USER"))
-(def ^:private api-url (str "https://" user ":" token "@api.github.com/"))
-(def ^:private html-url (str "https://github.com/"))
+(def api-url (str "https://" user ":" token "@api.github.com/"))
+(def html-url (str "https://github.com/"))
 (def ^:private lockfile-path "Gemfile.lock")
 
 (defn org-repos [org]
@@ -24,21 +24,19 @@
 (defn store-project-org-repos-async [id org]
   (bg/submit-job store-project-org-repos id org))
 
-(defn- repo-content [repo path & params]
+(defn repo-content
+  "Get's raw file in specified repo through github contents API"
+  [repo path & params]
   (let [url (str api-url "repos/" repo "/contents/" path)]
+    (timbre/info url)
     (:body (http/get url {:accept "application/vnd.github.v3.raw" :query-params (first params)}))))
 
-(defn- repos-diff-lock-files
-  [old-repo old-repo-params
-   new-repo new-repo-params]
-  (let [old-lock (repo-content old-repo lockfile-path old-repo-params)
-        new-lock (repo-content new-repo lockfile-path new-repo-params)]
-    (diff-lock-files old-lock new-lock)))
-
-(defn- diff-lock-files-for-pull [pull]
-  (let [{{old-ref :sha {old-repo :full_name} :repo} :base
-         {new-ref :sha {new-repo :full_name} :repo} :head} pull]
-    (repos-diff-lock-files old-repo {:ref old-ref} new-repo {:ref new-ref})))
+(defn diff-lock-files-from-repos
+  "Builds a diff for two Gemfile.lock files located in base-repo and head-repo"
+  [base-repo base-ref head-repo head-ref]
+  (let [base-lock (repo-content base-repo lockfile-path {:ref base-ref})
+        head-lock (repo-content head-repo lockfile-path {:ref head-ref})]
+    (parsing/diff-lock-files base-lock head-lock)))
 
 (defn create-pull-comment [repo pull-num comment]
   (let [url (str api-url "repos/" repo "/issues/" pull-num "/comments")
@@ -97,8 +95,12 @@
                            :comment_id comment-id
                            :comment compare-urls}))))))
 
-(defn handle-pull-webhook [project {pull-num :number :as pull}]
-  (let [diff (diff-lock-files-for-pull pull)]
+(defn handle-pull-webhook
+  "Main function that deals with analyzing pull request and posting comment with list of dependency changes if needed"
+  [project {pull-num :number :as pull}]
+  (let [{{base-ref :sha {base-repo :full_name} :repo} :base
+         {head-ref :sha {head-repo :full_name} :repo} :head} pull
+        diff (diff-lock-files-from-repos base-repo base-ref head-repo head-ref)]
     (if-not (empty? diff)
       (create-or-update-pull-comment project pull-num diff))))
 
