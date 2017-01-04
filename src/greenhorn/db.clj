@@ -1,10 +1,11 @@
 (ns greenhorn.db
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [environ.core :refer [env]]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str])
   (:import org.postgresql.jdbc4.Jdbc4Array
            clojure.lang.IPersistentVector))
 
-(def ^:const db-uri (or (System/getenv "PG_URI") "postgresql://localhost:5432/greenhorn"))
+(def ^:const db-uri (env :database-url))
 
 (extend-protocol jdbc/IResultSetReadColumn
   Jdbc4Array

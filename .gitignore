@@ -10,3 +10,4 @@ pom.xml.asc
 /.nrepl-port
 .env
 *.log
+profiles.clj

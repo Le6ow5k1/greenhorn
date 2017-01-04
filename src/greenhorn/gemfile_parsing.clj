@@ -38,8 +38,8 @@
     (->> sections (map parse-section) (reduce concat))))
 
 (defn diff-lock-files [old-lock new-lock]
-  (let [old-gemset (->> old-lock parse-lock-file (map #(dissoc % :remote :branch :ref)) set)
-        new-gemset (->> new-lock parse-lock-file (map #(dissoc % :remote :branch :ref)) set)
+  (let [old-gemset (->> old-lock parse-lock-file (map #(dissoc % :branch :ref)) set)
+        new-gemset (->> new-lock parse-lock-file (map #(dissoc % :branch :ref)) set)
         [old-gems new-gems & _] (data/diff old-gemset new-gemset)
         old-gems-by-name (group-by :name old-gems)
         new-gems-by-name (group-by :name new-gems)]

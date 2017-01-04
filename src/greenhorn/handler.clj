@@ -36,6 +36,13 @@
           (redirect "/"))
       (views/edit-project (assoc project :id id)))))
 
+(defn github-webhook [event-name body]
+  (if (= event-name "pull_request")
+    (do
+      (github/handle-pull-webhook event-name body)
+      {:status 200})
+    {:status 404}))
+
 (defroutes app-routes
   (GET "/" [] (views/index (db/projects)))
   (GET "/projects/new" [] (views/add-project))
@@ -45,9 +52,7 @@
   (route/not-found "There is nothing here."))
 
 (defroutes api-routes
-  (POST "/github-webhook" {body :body} (do
-                                         (github/handle-pull-webhook-async body)
-                                         {:status 200})))
+  (POST "/github-webhook" {body :body {event-name "X-GitHub-Event"} :headers} (github-webhook event-name body)))
 
 (def app
   (routes

@@ -92,8 +92,8 @@
   specs:
     aasm (3.2.1)"]
       (is (= (diff-lock-files old-lock new-lock)
-             {"aasm" [{:version "3.1.1"}
-                      {:version "3.2.1"}]}))))
+             {"aasm" [{:version "3.1.1" :remote "https://rubygems.org/"}
+                      {:version "3.2.1" :remote "https://rubygems.org/"}]}))))
 
   (testing "diff in GIT section by revision"
     (let [old-lock "GIT
@@ -107,8 +107,8 @@
   specs:
     actionmailer (3.1.12)"]
       (is (= (diff-lock-files old-lock new-lock)
-             {"actionmailer" [{:version "3.1.12" :revision "325008e70fd57abaf80b172bd1ed451f4e6dd4ab"}
-                              {:version "3.1.12" :revision "131df504e315aaa72ba72f854485a642001c2cf4"}]}))))
+             {"actionmailer" [{:version "3.1.12" :remote "git://github.com/rails/rails.git" :revision "325008e70fd57abaf80b172bd1ed451f4e6dd4ab"}
+                              {:version "3.1.12" :remote "git://github.com/rails/rails.git" :revision "131df504e315aaa72ba72f854485a642001c2cf4"}]}))))
 
   (testing "gem removed and gem added"
     (let [old-lock "GIT
@@ -126,10 +126,10 @@
       interactor (>= 3.0)
       postgresql_cursor (>= 0.6.1)"]
       (is (= (diff-lock-files old-lock new-lock)
-             {"actionmailer" [{:version "3.1.12" :revision "131df504e315aaa72ba72f854485a642001c2cf4"}
+             {"actionmailer" [{:version "3.1.12" :remote "git@github.com:rails/actionmailer.git" :revision "131df504e315aaa72ba72f854485a642001c2cf4"}
                               nil]
               "activemodel" [nil
-                             {:version "3.1.0"}]}))))
+                             {:version "3.1.0" :remote "https://rubygems.org/"}]}))))
 
   (testing "diff in GEM and GIT section"
     (let [old-lock "GEM
@@ -142,8 +142,8 @@
   specs:
     actionmailer (3.1.12)"]
       (is (= (diff-lock-files old-lock new-lock)
-             {"actionmailer" [{:version "3.1.0"}
-                              {:version "3.1.12" :revision "131df504e315aaa72ba72f854485a642001c2cf4"}]}))))
+             {"actionmailer" [{:version "3.1.0" :remote "https://rubygems.org/"}
+                              {:version "3.1.12" :remote "git://github.com/rails/rails.git" :revision "131df504e315aaa72ba72f854485a642001c2cf4"}]}))))
 
   (testing "diff in GIT and GEM section"
     (let [old-lock "GIT
@@ -161,6 +161,6 @@
       interactor (>= 3.0)
       postgresql_cursor (>= 0.6.1)"]
       (is (= (diff-lock-files old-lock new-lock)
-             {"actionmailer" [{:version "3.1.12" :revision "131df504e315aaa72ba72f854485a642001c2cf4"}
-                              {:version "3.1.0"}]}))))
+             {"actionmailer" [{:version "3.1.12" :remote "git@github.com:rails/actionmailer.git" :revision "131df504e315aaa72ba72f854485a642001c2cf4"}
+                              {:version "3.1.0" :remote "https://rubygems.org/"}]}))))
   )

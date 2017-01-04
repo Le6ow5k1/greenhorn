@@ -15,8 +15,11 @@
                  [org.clojure/core.async "0.2.395"]
                  [com.taoensso/timbre "4.7.4"]
                  [ring-logger-timbre "0.7.5"]
-                 [tentacles "0.5.1"]]
-  :plugins [[lein-ring "0.9.7"]]
+                 [tentacles "0.5.1"]
+                 [clj-http-fake "1.0.2"]
+                 [environ "1.1.0"]]
+  :plugins [[lein-ring "0.9.7"]
+            [lein-environ "1.1.0"]]
   :ring {:handler greenhorn.handler/app
          :init greenhorn.handler/init
          :destroy greenhorn.handler/stop}
