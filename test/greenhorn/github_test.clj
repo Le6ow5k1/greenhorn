@@ -26,11 +26,6 @@
 
           (let [result (github/diff-lock-files-from-repos "gem" "master" "gem" "develop")]
             (is (= result {"actionmailer"
-<<<<<<< HEAD
                            [{:version "3.1.0" :remote "https://rubygems.org/"}
                             {:version "3.1.12" :remote "git://github.com/rails/rails.git" :revision "131df504e315aaa72ba72f854485a642001c2cf4"}]}))))
-=======
-                           [{:version "3.1.0"}
-                            {:version "3.1.12", :revision "131df504e315aaa72ba72f854485a642001c2cf4"}]}))))
->>>>>>> 6d734c0... Add test for github ns
           )))
