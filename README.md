@@ -2,11 +2,19 @@
 
 [![CircleCI](https://circleci.com/gh/Le6ow5k1/greenhorn.svg?style=svg)](https://circleci.com/gh/Le6ow5k1/greenhorn)
 
-Bot that checks github PS's for changed dependencies in Gemfile.lock.
+Bot that checks github PR's for changed dependencies in Gemfile.lock.
+
+It analyzes changes made to Gemfile.lock file, determines which dependencies are changed, and posts a comment with list of changes and corresponding links to github compare page.
 
 ## Development
 
 You will need Docker and Docker-compose installed.
+
+Copy config file:
+
+    cp profiles.clj.example profiles.clj
+
+Then specify config variables.
 
 To start a web server for the application, run:
 
@@ -14,8 +22,8 @@ To start a web server for the application, run:
 
 ## Test
 
-    docker-compose run app lein test
+    docker-compose run --rm app lein test
 
 ## License
 
-Copyright © 2016 FIXME
+Copyright © 2016 Konstantin Lazarev
