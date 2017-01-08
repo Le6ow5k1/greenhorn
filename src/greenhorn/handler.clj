@@ -39,7 +39,7 @@
 (defn github-webhook [event-name body]
   (if (= event-name "pull_request")
     (do
-      (github/handle-pull-webhook event-name body)
+      (github/handle-pull-webhook body)
       {:status 200})
     {:status 404}))
 
@@ -52,7 +52,7 @@
   (route/not-found "There is nothing here."))
 
 (defroutes api-routes
-  (POST "/github-webhook" {body :body {event-name "X-GitHub-Event"} :headers} (github-webhook event-name body)))
+  (POST "/github-webhook" {body :body {event-name "x-github-event"} :headers} (github-webhook event-name body)))
 
 (def app
   (routes

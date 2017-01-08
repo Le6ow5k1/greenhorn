@@ -16,6 +16,10 @@ Copy config file:
 
 Then specify config variables.
 
+Then run migrations:
+
+    docker-compose run --rm app lein migrate
+
 To start a web server for the application, run:
 
     docker-compose up web

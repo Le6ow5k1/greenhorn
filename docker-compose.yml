@@ -20,7 +20,7 @@ services:
   postgres:
     image: postgres:9.6
     environment:
-      - POSTGRES_DB=greenhorn
+      - POSTGRES_DB=greenhorn_dev
     volumes:
       - pg-data:/var/lib/postgresql/data
 

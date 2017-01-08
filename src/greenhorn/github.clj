@@ -10,7 +10,7 @@
             [environ.core :refer [env]]))
 
 (def ^:private token (env :github-token))
-(def ^:private user (env :github-token))
+(def ^:private user (env :github-user))
 (def api-url (str "https://" user ":" token "@api.github.com/"))
 (def html-url (str "https://github.com/"))
 (def ^:private lockfile-path "Gemfile.lock")
@@ -18,12 +18,12 @@
 (defn org-repos [org]
   (repos-api/org-repos org {:auth (str user ":" token) :all-pages true}))
 
-(defn store-project-org-repos [id org]
+(bg/define-worker store-project-org-repos-worker [id org]
   (let [repos-names (mapv #(% :name) (org-repos org))]
     (db/update-project id {:org_repos repos-names})))
 
 (defn store-project-org-repos-async [id org]
-  (bg/submit-job store-project-org-repos id org))
+  (bg/submit-job store-project-org-repos-worker id org))
 
 (defn repo-content
   "Get's raw file in specified repo through github contents API"
