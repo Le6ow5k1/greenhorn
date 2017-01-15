@@ -61,9 +61,10 @@
   (str (gem-compare-ref old-gem) "..." (gem-compare-ref new-gem)))
 
 (defn- gem-url-from-remote
-  "If git remote points to github we just replace git:// protocol with https://"
+  "Trying to infer gem url from remote"
   [old-remote new-remote]
   (let [git-url-regex #"git(@|://)github.com"]
+    ;; If git remote points to github we just replace git:// protocol with https://
     (when (and
          (re-matches git-url-regex old-remote)
          (re-matches git-url-regex new-remote))
