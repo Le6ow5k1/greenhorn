@@ -37,12 +37,29 @@
         sections (str/split file-contents #"\n\n")]
     (->> sections (map parse-section) (reduce concat))))
 
-(defn diff-lock-files [old-lock new-lock]
-  (let [old-gemset (->> old-lock parse-lock-file (map #(dissoc % :branch :ref)) set)
-        new-gemset (->> new-lock parse-lock-file (map #(dissoc % :branch :ref)) set)
+(defn- select-diff-related-keys [[gem]]
+  (select-keys gem [:revision :version :name]))
+
+(defn diff-lock-files
+  "Given two lock files (file contents or paths to files) finds differences between gems.
+
+  Example outputs
+    when gem is added
+      => {\"activemodel\" [nil {:version \"3.1.0\" :remote \"https://rubygems.org/\"}]}
+    when gem is removed
+      => {\"activemodel\" [{:version \"3.1.0\" :remote \"https://rubygems.org/\"} nil]}
+    when gem version is updated
+      => {\"activemodel\" [{:version \"3.1.0\" :remote \"https://rubygems.org/\"}
+                           {:version \"4.0.0\" :remote \"https://rubygems.org/\"}]}
+  "
+  [old-lock new-lock]
+  (let [parsed-old (->> old-lock parse-lock-file (group-by :name))
+        parsed-new (->> new-lock parse-lock-file (group-by :name))
+        old-gemset (->> parsed-old vals (map select-diff-related-keys) set)
+        new-gemset (->> parsed-new vals (map select-diff-related-keys) set)
         [old-gems new-gems & _] (data/diff old-gemset new-gemset)
-        old-gems-by-name (group-by :name old-gems)
-        new-gems-by-name (group-by :name new-gems)]
+        old-gems-by-name (select-keys parsed-old (map :name old-gems))
+        new-gems-by-name (select-keys parsed-new (map :name new-gems))]
     (reduce
      (fn [acc name]
        (let [[old-gem] (old-gems-by-name name)
