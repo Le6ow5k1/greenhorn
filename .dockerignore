@@ -1,0 +1,7 @@
+target/
+.git
+.env
+*.log
+.lein-repl-history
+.lein-failures
+profiles.clj
