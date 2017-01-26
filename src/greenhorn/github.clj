@@ -102,15 +102,12 @@
   (let [{saved-comment-id :comment_id} (db/find-pull project-id pull-num)
         compare-urls (gem-diffs->comment gems-org org-repos diff)]
     (if saved-comment-id
-      (let [{comment-id :id} (update-pull-comment repo-path saved-comment-id compare-urls)]
-        (if comment-id
-          (db/update-pull pull-num {:comment compare-urls})))
+      (update-pull-comment repo-path saved-comment-id compare-urls)
       (let [{comment-id :id} (create-pull-comment repo-path pull-num compare-urls)]
         (if comment-id
           (db/create-pull {:project_id project-id
                            :num pull-num
-                           :comment_id comment-id
-                           :comment compare-urls}))))))
+                           :comment_id comment-id}))))))
 
 (defn handle-pull
   "Function that deals with analyzing pull request
