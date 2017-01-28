@@ -113,8 +113,8 @@
   "Function that deals with analyzing pull request
   and posting comment with list of dependency changes if needed"
   [project {pull-num :number :as pull}]
-  (let [{{base-ref :sha {base-repo :full_name} :repo} :base
-         {head-ref :sha {head-repo :full_name} :repo} :head} pull
+  (let [{{base-ref :ref {base-repo :full_name} :repo} :base
+         {head-ref :ref {head-repo :full_name} :repo} :head} pull
         diff (diff-lock-files-from-repos base-repo base-ref head-repo head-ref)]
     (if-not (empty? diff)
       (create-or-update-pull-comment project pull-num diff))))
