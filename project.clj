@@ -17,7 +17,8 @@
                  [ring-logger-timbre "0.7.5"]
                  [tentacles "0.5.1"]
                  [clj-http-fake "1.0.2"]
-                 [environ "1.1.0"]]
+                 [environ "1.1.0"]
+                 [com.gfredericks/vcr-clj "0.4.8"]]
   :plugins [[lein-ring "0.9.7"]
             [lein-environ "1.1.0"]]
   :ring {:handler greenhorn.handler/app
@@ -26,5 +27,4 @@
   :aliases {"migrate"  ["run" "-m" "greenhorn.migrations/migrate"]
             "rollback" ["run" "-m" "greenhorn.migrations/rollback"]}
   :profiles
-  {:dev {:dependencies [[javax.servlet/servlet-api "2.5"]
-                        [ring/ring-mock "0.3.0"]]}})
+  {:dev {:dependencies []}})

@@ -12,11 +12,12 @@
 
 (def ^:private token (env :github-token))
 (def ^:private user (env :github-user))
-(def api-url (str "https://" user ":" token "@api.github.com/"))
+(def http-basic-auth-str (str user ":" token))
+(def api-url (str "https://" http-basic-auth-str "@api.github.com/"))
 (def ^:private lockfile-path "Gemfile.lock")
 
 (defn org-repos [org]
-  (repos-api/org-repos org {:auth (str user ":" token) :all-pages true}))
+  (repos-api/org-repos org {:auth http-basic-auth-str :all-pages true}))
 
 (bg/define-worker store-project-org-repos-worker [id org]
   (let [repos-names (mapv #(% :name) (org-repos org))]
@@ -24,6 +25,17 @@
 
 (defn store-project-org-repos-async [id org]
   (bg/submit-job store-project-org-repos-worker id org))
+
+(defn compare-commit-messages
+  "Fetches commit messages along with commit count from github compare API"
+  [org repo base head & options]
+  (let [{limit :limit :or {limit 10}} options
+        response (repos-api/compare-commits org repo base head {:auth http-basic-auth-str})
+        {:keys [commits total_commits]} response
+        messages (->> commits
+                      (take limit)
+                      (mapv #(get-in % [:commit :message])))]
+    {:messages messages :total_commits total_commits}))
 
 (defn repo-content
   "Get's raw file in specified repo through github contents API"
@@ -40,14 +52,14 @@
 
 (defn create-pull-comment [repo pull-num comment]
   (let [url (str api-url "repos/" repo "/issues/" pull-num "/comments")
-        options {:throw-exceptions false :form-params {:body comment} :content-type :json}
+        options {:form-params {:body comment} :content-type :json}
         {status :status body :body} (http/post url options)]
     (when (= status 201)
       (json/parse-string body true))))
 
 (defn update-pull-comment [repo comment-id comment]
   (let [url (str api-url "repos/" repo "/issues/comments/" comment-id)
-        options {:throw-exceptions false :form-params {:body comment} :content-type :json}
+        options {:form-params {:body comment} :content-type :json}
         {status :status body :body} (http/patch url options)]
     (when (= status 200)
       (json/parse-string body true))))
