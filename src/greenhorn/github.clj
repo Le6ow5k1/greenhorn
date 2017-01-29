@@ -2,6 +2,7 @@
   (:require [greenhorn.gemfile-parsing :as parsing]
             [greenhorn.background :as bg]
             [greenhorn.db :as db]
+            [greenhorn.github.comment-formatting :refer [diffs-to-markdown]]
             [cheshire.core :as json]
             [clj-http.client :as http]
             [clojure.string :as str]
@@ -12,7 +13,6 @@
 (def ^:private token (env :github-token))
 (def ^:private user (env :github-user))
 (def api-url (str "https://" user ":" token "@api.github.com/"))
-(def html-url (str "https://github.com/"))
 (def ^:private lockfile-path "Gemfile.lock")
 
 (defn org-repos [org]
@@ -52,58 +52,13 @@
     (when (= status 200)
       (json/parse-string body true))))
 
-(defn- gem-compare-ref [{:keys [version revision]}]
-  (if revision
-    (->> revision (take 8) (apply str))
-    (str "v" version)))
-
-(defn- gem-compare-str [old-gem new-gem]
-  (str (gem-compare-ref old-gem) "..." (gem-compare-ref new-gem)))
-
-(defn- gem-url-from-remote
-  "Trying to infer gem url from remote"
-  [old-remote new-remote]
-  (let [git-url-regex #"git(@|://)github.com"]
-    ;; If git remote points to github we just replace git:// protocol with https://
-    (when (and
-         (re-matches git-url-regex old-remote)
-         (re-matches git-url-regex new-remote))
-      (-> new-remote
-          (str/replace git-url-regex html-url)
-          (str/replace #".git$" "")))))
-
-(defn- comment-for-diff
-  [gems-org
-   gem-repo-present?
-   [name [{old-remote :remote :as old-gem} {new-remote :remote :as new-gem}]]]
-  (cond
-    (and (nil? old-gem)
-         (not (nil? new-gem))) (str "Gem `" name "` has been **added**")
-    (and (nil? new-gem)
-         (not (nil? old-gem))) (str "Gem `" name "` has been **deleted**")
-    :else (let [updated-str (str "Gem `" name "` has been **updated**")
-                gem-url (or (gem-url-from-remote old-remote new-remote)
-                            (when gem-repo-present? (str html-url gems-org "/" name)))]
-            (if gem-url
-              (str updated-str " " gem-url "/compare/" (gem-compare-str old-gem new-gem))
-              (str updated-str " " (gem-compare-str old-gem new-gem))))))
-
-(defn- gem-diffs->comment
-  [gems-org org-repos diffs]
-  (->> diffs
-       (sort-by first)
-       (mapv
-        (fn [[name _ :as diff]]
-          (comment-for-diff gems-org (some #{name} org-repos) diff)))
-       (str/join "\n")))
-
 (defn- create-or-update-pull-comment
   [{project-id :id repo-path :full_name gems-org :gems_org org-repos :org_repos} pull-num diff]
   (let [{saved-comment-id :comment_id} (db/find-pull project-id pull-num)
-        compare-urls (gem-diffs->comment gems-org org-repos diff)]
+        body (diffs-to-markdown gems-org org-repos diff)]
     (if saved-comment-id
-      (update-pull-comment repo-path saved-comment-id compare-urls)
-      (let [{comment-id :id} (create-pull-comment repo-path pull-num compare-urls)]
+      (update-pull-comment repo-path saved-comment-id body)
+      (let [{comment-id :id} (create-pull-comment repo-path pull-num body)]
         (if comment-id
           (db/create-pull {:project_id project-id
                            :num pull-num
