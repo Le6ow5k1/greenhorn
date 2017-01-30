@@ -1,0 +1,4 @@
+test:
+  environment:
+    GITHUB_USER: 'xxx'
+    GITHUB_TOKEN: 'xxx'

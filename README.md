@@ -31,8 +31,9 @@ To start a web server for the application, run:
 ## Roadmap
 
   - [x] Prettify comments
-  - [ ] Commits from gems diffs, possibly JIRA issues
+  - [x] Commits from gems diffs, possibly JIRA issues
   - [ ] Automatic updates of organization repos
+  - [ ] Better error handling, especially in API calls
   - [ ] Smart truncating of large comments
   - [ ] Github authentication
   - [ ] Removing pull info on merge and close

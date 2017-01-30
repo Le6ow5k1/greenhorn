@@ -1,9 +1,9 @@
 (ns greenhorn.github.comment-formatting
   (:require [clojure.string :as str]
+            [greenhorn.github.api :as api]
             [taoensso.timbre :as timbre]))
 
 (def html-url (str "https://github.com/"))
-(def ^:dynamic fetch-commit-messages-fn nil)
 
 (defn- gem-name-and-remote-matches? [name remote]
   (let [[_ name-from-remote] (re-matches #".*\/([^\/]+).git$" remote)]
@@ -41,7 +41,7 @@
     (->> messages
          (mapv commit-message-to-markdown)
          ((fn [m]
-            (or (and (> over-limit-count 0) (conj m (str "  - and " over-limit-count " more commits")))
+            (or (and (> over-limit-count 0) (conj m (str "  - ... and " over-limit-count " more commits")))
                 m)))
          (str/join "\n"))))
 
@@ -50,9 +50,11 @@
     (if gem-url
       (let [compare-url (compare-url gem-url old-gem new-gem)
             [_ org repo base head] (re-matches #"^.+\/([^\/]+)\/([^\/]+)\/compare\/(.+)\.{3}(.+)$" compare-url)
-            {:keys [messages total_commits]} (fetch-commit-messages-fn org repo base head)
-            messages-md (commit-messages-to-markdown messages total_commits)]
-        (str updated-str " " (shorten-url compare-url) "\n" messages-md))
+            {:keys [messages total_commits]} (api/compare-commit-messages org repo base head)
+            formatted-messages (commit-messages-to-markdown messages total_commits)]
+        (str updated-str " "
+             (shorten-url compare-url)
+             (when-not (empty? formatted-messages) (str "\n" formatted-messages))))
       (str updated-str " " (compare-str old-gem new-gem)))))
 
 (defn- gem-added-str-md [name gem-url gem-spec]
@@ -98,7 +100,3 @@
         (fn [[name _ :as diff]]
           (str "- " (diff-to-markdown gems-org (some #{name} org-repos) diff))))
        (str/join "\n")))
-
-(defn build-markdown-formatter [commit-messages-fn]
-  (binding [fetch-commit-messages-fn commit-messages-fn]
-    diffs-to-markdown))

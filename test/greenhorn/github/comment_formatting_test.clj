@@ -28,11 +28,15 @@
       (is (= result
              (str "  - `message 1`\n"
                   "  - `message 2`\n"
-                  "  - and 2 more commits")))))
+                  "  - ... and 2 more commits")))))
+
+  (testing "when there are no messages"
+    (let [result (commit-messages-to-markdown [] 0)]
+      (is (= result ""))))
   )
 
 (deftest diff-to-markdown-test
-  (binding [fetch-commit-messages-fn (fn [& v] {:messages ["message 1"] :total_commits 1})]
+  (with-redefs [greenhorn.github.api/compare-commit-messages (fn [& args] {:messages ["commit message"] :total_commits 1})]
     (testing "when gem is updated"
       (def updated-diff ["rails" [{:version "3.1.0"
                                    :remote "https://rubygems.org/"}
@@ -46,14 +50,21 @@
         (let [result (diff-to-markdown "rails" true updated-diff)]
           (is (= result
                  (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
-                      "  - `message 1`")))))
+                      "  - `commit message`"))))
+
+        (testing "when there are no commit messages for compare"
+          (with-redefs [greenhorn.github.api/compare-commit-messages (fn [& args] {:messages [] :total_commits 0})]
+            (let [result (diff-to-markdown "rails" true updated-diff)]
+              (is (= result
+                     (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)"))))))
+        )
 
       (testing "when gem repo doesn't exist in organization and remote pointing to github"
         (let [diff (assoc-in updated-diff [1 0 :remote] "git://github.com/rails/rails.git")
               result (diff-to-markdown "rails" false diff)]
           (is (= result
                  (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
-                      "  - `message 1`")))))
+                      "  - `commit message`")))))
 
       (testing "when gem repo doesn't exist in organization and remote not pointing to github"
         (let [result (diff-to-markdown "rails" false updated-diff)]
@@ -93,13 +104,13 @@
                       {:version "3.6.2"
                        :remote "https://rubygems.org/"}]})
 
-  (binding [fetch-commit-messages-fn (fn [& v] {:messages ["message 1"] :total_commits 1})]
+  (with-redefs [greenhorn.github.api/compare-commit-messages (fn [& args] {:messages ["commit message"] :total_commits 1})]
     (testing "happy path"
       (let [result (diffs-to-markdown "rails" ["rails" "jbuilder"] diffs)]
         (is (= result
                (str "- **jbuilder** has been updated [e0986b3...131df50](https://github.com/rails/jbuilder/compare/e0986b3...131df50)\n"
-                    "  - `message 1`\n"
+                    "  - `commit message`\n"
                     "- **puma** has been added\n"
                     "- **rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
-                    "  - `message 1`"))))))
+                    "  - `commit message`"))))))
   )
