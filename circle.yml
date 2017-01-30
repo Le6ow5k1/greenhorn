@@ -1,4 +1,4 @@
-test:
+machine:
   environment:
     GITHUB_USER: 'xxx'
     GITHUB_TOKEN: 'xxx'
