@@ -14,7 +14,7 @@
     (db/update-project id {:org_repos repos-names})))
 
 (defn store-project-org-repos-async [id org]
-  (bg/submit-job store-project-org-repos-worker id org))
+  (bg/submit-job {} store-project-org-repos-worker id org))
 
 (defn diff-lock-files-from-repos
   "Builds a diff for two Gemfile.lock files located in base-repo and head-repo"
@@ -54,4 +54,4 @@
   (let [{{{full-name :full_name} :repo} :base} pull
         project (db/find-project-by {:full_name full-name})]
     (if (and project pull (contains? #{"opened" "reopened" "synchronize"} action))
-      (bg/submit-job handle-pull-worker project pull))))
+      (bg/submit-job {} handle-pull-worker project pull))))

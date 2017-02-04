@@ -1,19 +1,22 @@
 (ns greenhorn.background
-  (:require [clojure.core.async :refer :all :as async]
+  (:require [clojure.core.async :as async]
             [taoensso.timbre :as timbre]))
 
 (def default-config {:job-timeout 30000
                      :max-threads 20
-                     :queue-size 100})
+                     :queue-size 100
+                     :retry-delay 1000
+                     :retry-limit 3})
 
 (def workers (atom {}))
-(def queue (chan (dropping-buffer (default-config :queue-size))))
-(def ^:private executor-ch (chan))
+(def queue (async/chan (async/dropping-buffer (default-config :queue-size))))
+(def default-retry-opts (select-keys default-config [:retry-delay :retry-limit]))
+(def ^:private executor-ch (async/chan))
 
 (defmacro define-worker
   "Defines a function that will do the work.
 
-      (define-worker send-email recipient body
+      (define-worker send-email [recipient body]
         ...
         )"
   [& function-definition]
@@ -25,19 +28,26 @@
               ~str-ns ~symbol-name
               ~symbol-name ~str-ns))))
 
+(defn- -submit-job [job-info]
+  (async/>!! queue job-info))
+
 (defn submit-job
   "Places a job (worker and it's args) into the queue for future processing.
 
-      (submit-job send-email \"foo@example.com\" \"Hello, world!\")"
-  [worker & args]
-  (let [worker-name (@workers worker)]
+      (submit-job {} send-email \"foo@example.com\" \"Hello, world!\")"
+  [opts worker & args]
+  (let [given-opts (select-keys opts [:retry-delay :retry-limit])
+        coerced-opts (merge default-retry-opts given-opts)
+        worker-name (@workers worker)]
     (timbre/info (str "Queueing job " worker-name " with args: " args))
-    (>!! queue {:worker-name worker-name :args args})))
+    (-submit-job {:worker-name worker-name :args args :opts coerced-opts :retries 0})))
 
 (defn- execute-job
   [buffer-chan timeout-ms]
   (loop []
-    (let [[{:keys [worker-name args]} _] (alts!! [buffer-chan (timeout timeout-ms)])
+    (let [[{:keys [worker-name args opts retries] :as job-info} _] (async/alts!! [buffer-chan (async/timeout timeout-ms)])
+          {:keys [retry-delay retry-limit]} opts
+          need-retry? (and retry-limit (> retry-limit retries))
           worker (@workers worker-name)]
       (if worker
         (try
@@ -46,36 +56,39 @@
           (timbre/info (str "Done executing job " worker-name))
           (catch Throwable e
             (timbre/error (str "Failure executing job " worker-name " with args: " args))
-            (timbre/error e)))
+            (timbre/error e)
+            (when need-retry?
+              (async/<!! (async/timeout retry-delay))
+              (-submit-job (update-in job-info [:retries] inc)))))
         (recur)))))
 
 (defn- thread-pool-service
   [queue-chan max-threads timeout-ms]
   (let [thread-count (atom 0)
-        buffer-chan (chan)]
-    (go (loop []
-          (when-let [[job _] (alts! [queue-chan executor-ch])]
-            (if (= job :stop)
-              (do
-                (timbre/info "Stopping thread pool")
-                (close! buffer-chan))
-              (if-not (alt! [[buffer-chan job]] true
-                            :default false)
-                (loop []
-                  (if (< @thread-count max-threads)
-                    (do (put! buffer-chan job)
-                        (thread
-                          (swap! thread-count inc)
-                          (execute-job buffer-chan timeout-ms)
-                          (swap! thread-count dec)))
-                    (when-not (alt! [[buffer-chan job]] true
-                                    [(timeout 1000)] false)
-                      (recur)))))))
-            (recur))
-        (close! buffer-chan))))
+        buffer-chan (async/chan)]
+    (async/go (loop []
+                (when-let [[job _] (async/alts! [queue-chan executor-ch])]
+                  (if (= job :stop)
+                    (do
+                      (timbre/info "Stopping thread pool")
+                      (async/close! buffer-chan))
+                    (if-not (async/alt! [[buffer-chan job]] true
+                                        :default false)
+                      (loop []
+                        (if (< @thread-count max-threads)
+                          (do (async/put! buffer-chan job)
+                              (async/thread
+                                (swap! thread-count inc)
+                                (execute-job buffer-chan timeout-ms)
+                                (swap! thread-count dec)))
+                          (when-not (async/alt! [[buffer-chan job]] true
+                                                [(async/timeout 1000)] false)
+                            (recur)))))))
+                (recur))
+              (async/close! buffer-chan))))
 
 (defn start! []
   (thread-pool-service queue (default-config :max-threads) (default-config :job-timeout)))
 
 (defn stop! []
-  (>!! executor-ch :stop))
+  (async/>!! executor-ch :stop))
