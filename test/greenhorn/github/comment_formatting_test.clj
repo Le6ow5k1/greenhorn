@@ -79,7 +79,13 @@
 
       (let [result (diff-to-markdown "rails" true added-diff)]
         (is (= result
-               "**rails** has been added [v3.1.0](https://github.com/rails/rails/tree/v3.1.0)")))))
+               "**rails** has been added [v3.1.0](https://github.com/rails/rails/tree/v3.1.0)")))
+
+      (testing "when gem doesn't exist in organization"
+        (let [result (diff-to-markdown "rails" nil added-diff)]
+          (is (= result "**rails** has been added v3.1.0"))))
+      )
+    )
   )
 
 (deftest diffs-to-markdown-test
@@ -110,7 +116,7 @@
         (is (= result
                (str "- **jbuilder** has been updated [e0986b3...131df50](https://github.com/rails/jbuilder/compare/e0986b3...131df50)\n"
                     "  - `commit message`\n"
-                    "- **puma** has been added\n"
+                    "- **puma** has been added v3.6.2\n"
                     "- **rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
                     "  - `commit message`"))))))
   )

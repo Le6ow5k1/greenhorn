@@ -61,7 +61,7 @@
   (if gem-url
     (let [gem-ref-url (str gem-url "/tree/" (gem-ref gem-spec))]
       (str (md-bold name) " has been added " (shorten-url gem-ref-url)))
-    (str (md-bold name) " has been added")))
+    (str (md-bold name) " has been added " (gem-ref gem-spec))))
 
 (defn- gem-url-from-remote
   "Trying to infer gem url from remote"
