@@ -4,10 +4,11 @@
             [greenhorn.db :as db]
             [greenhorn.github.comment-formatting :refer [diffs-to-markdown]]
             [greenhorn.github.api :as api]
+            [clj-http.client :as http]
             [clojure.string :as str]
             [taoensso.timbre :as timbre]))
 
-(def ^:private lockfile-path "Gemfile.lock")
+(def ^:private lockfile-name "Gemfile.lock")
 
 (bg/define-worker store-project-org-repos-worker [id org]
   (let [repos-names (mapv #(% :name) (api/org-repos org))]
@@ -19,8 +20,8 @@
 (defn diff-lock-files-from-repos
   "Builds a diff for two Gemfile.lock files located in base-repo and head-repo"
   [base-repo base-ref head-repo head-ref]
-  (let [base-lock (api/repo-content base-repo lockfile-path {:ref base-ref})
-        head-lock (api/repo-content head-repo lockfile-path {:ref head-ref})]
+  (let [base-lock (api/repo-content base-repo lockfile-name {:ref base-ref})
+        head-lock (api/repo-content head-repo lockfile-name {:ref head-ref})]
     (parsing/diff-lock-files base-lock head-lock)))
 
 (defn- create-or-update-pull-comment
@@ -35,23 +36,40 @@
                            :num pull-num
                            :comment_id comment-id}))))))
 
-(defn handle-pull
-  "Function that deals with analyzing pull request
-  and posting comment with list of dependency changes if needed"
-  [project {pull-num :number :as pull}]
-  (let [{{base-ref :ref {base-repo :full_name} :repo} :base
-         {head-ref :ref {head-repo :full_name} :repo} :head} pull
-        diff (diff-lock-files-from-repos base-repo base-ref head-repo head-ref)]
-    (if-not (empty? diff)
-      (create-or-update-pull-comment project pull-num diff))))
+(defn diff-lock-files-for-pull
+  [{{base-ref :ref {base-repo :full_name} :repo} :base} merge-commit-sha]
+  (diff-lock-files-from-repos base-repo base-ref base-repo merge-commit-sha))
 
-(bg/define-worker handle-pull-worker [project pull]
-  (handle-pull project pull))
+(defn handle-ready-pull
+  "Handles pull that already has a merge commit"
+  [project {pull-num :number :as pull} merge-commit-sha]
+  (let [diff (diff-lock-files-for-pull pull merge-commit-sha)]
+    (if-not (empty? diff)
+      (create-or-update-pull-comment project pull-num diff)
+      (db/update-pull pull-num {:last_merge_commit_sha merge-commit-sha}))))
+
+(defn handle-pull
+  [project {merge-commit-sha :merge_commit_sha :as pull}]
+  (if-not merge-commit-sha (throw (Exception. "Pull doesn't include merge_commit_sha")))
+  (handle-ready-pull project pull merge-commit-sha))
+
+(bg/define-worker handle-ready-pull-worker [project pull merge-commit-sha]
+  (handle-ready-pull project pull merge-commit-sha))
+
+(bg/define-worker handle-unready-pull-worker [project repo-full-name pull-num]
+  (let [[org repo] (str/split repo-full-name #"\/")
+        pull (api/specific-pull org repo pull-num)]
+    (handle-pull project pull)))
 
 (defn handle-pull-webhook
   "Start asynchronous handling of a pull_request event"
   [{action :action pull :pull_request}]
-  (let [{{{full-name :full_name} :repo} :base} pull
-        project (db/find-project-by {:full_name full-name})]
+  (let [{pull-num :number merge-commit-sha :merge_commit_sha {{full-name :full_name} :repo} :base} pull
+        {project-id :id :as project} (db/find-project-by {:full_name full-name})
+        {last-merge-commit-sha :last_merge_commit_sha} (db/find-pull project-id pull-num)]
     (if (and project pull (contains? #{"opened" "reopened" "synchronize"} action))
-      (bg/submit-job {} handle-pull-worker project pull))))
+      (if (and merge-commit-sha last-merge-commit-sha (not= last-merge-commit-sha last-merge-commit-sha))
+        (bg/submit-job {} handle-ready-pull-worker project pull merge-commit-sha)
+        ;; If there is no merge commit or it's the same as previous, it means that merge commit not updated yet.
+        ;; In this case we are asking github API up to 3 times until new merge commit becomes available.
+        (bg/submit-job {:retry-limit 2 :retry-delay 5000} handle-unready-pull-worker project full-name pull-num)))))

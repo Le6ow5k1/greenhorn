@@ -1,0 +1,2 @@
+{:up   ["ALTER TABLE projects ADD COLUMN last_merge_commit_sha varchar[];"]
+ :down ["ALTER TABLE projects DROP COLUMN last_merge_commit_sha;"]}

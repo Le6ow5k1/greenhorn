@@ -18,7 +18,8 @@
                  [tentacles "0.5.1"]
                  [clj-http-fake "1.0.2"]
                  [environ "1.1.0"]
-                 [com.gfredericks/vcr-clj "0.4.8"]]
+                 [com.gfredericks/vcr-clj "0.4.8"]
+                 [com.cemerick/url "0.1.1"]]
   :plugins [[lein-ring "0.9.7"]
             [lein-environ "1.1.0"]]
   :ring {:handler greenhorn.handler/app

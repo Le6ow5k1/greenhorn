@@ -34,7 +34,7 @@
 (defn submit-job
   "Places a job (worker and it's args) into the queue for future processing.
 
-      (submit-job {} send-email \"foo@example.com\" \"Hello, world!\")"
+      (submit-job {:retry-limit 4 :retry-delay 3000} send-email \"foo@example.com\" \"Hello, world!\")"
   [opts worker & args]
   (let [given-opts (select-keys opts [:retry-delay :retry-limit])
         coerced-opts (merge default-retry-opts given-opts)
