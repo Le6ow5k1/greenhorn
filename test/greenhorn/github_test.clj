@@ -25,7 +25,7 @@
 (deftest handle-pull-test
   (let [diff-spy (atom nil)]
     (with-redefs [greenhorn.github/create-or-update-pull-comment (fn [project pull-num diff] (reset! diff-spy diff))
-                  greenhorn.db/update-pull (fn [pull-num attra])]
+                  greenhorn.db/update-pull (fn [project-id pull-num attra])]
       (testing "when merge commit is present"
         (with-cassette :github/handle-pull [{:var #'clj-http.client/get}]
           (let [pull {:merge_commit_sha "fb4dc3224508ba55320ecc61bf7da5f1282d6873"

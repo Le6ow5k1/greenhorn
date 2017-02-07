@@ -20,8 +20,8 @@
 (defn create-pull [attrs]
   (jdbc/insert! db-uri :pulls attrs))
 
-(defn update-pull [num attrs]
-  (jdbc/update! db-uri :pulls attrs ["num = ?" num]))
+(defn update-pull [project-id num attrs]
+  (jdbc/update! db-uri :pulls attrs ["project_id = ? and num = ?" project-id num]))
 
 (defn find-pull [project-id num]
   (let [result (jdbc/find-by-keys db-uri :pulls {:project_id project-id :num num})]

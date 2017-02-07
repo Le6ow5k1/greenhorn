@@ -42,11 +42,11 @@
 
 (defn handle-ready-pull
   "Handles pull that already has a merge commit"
-  [project {pull-num :number :as pull} merge-commit-sha]
+  [{project-id :id :as project} {pull-num :number :as pull} merge-commit-sha]
   (let [diff (diff-lock-files-for-pull pull merge-commit-sha)]
-    (if-not (empty? diff)
+    (when-not (empty? diff)
       (create-or-update-pull-comment project pull-num diff)
-      (db/update-pull pull-num {:last_merge_commit_sha merge-commit-sha}))))
+      (db/update-pull project-id pull-num {:last_merge_commit_sha merge-commit-sha}))))
 
 (defn handle-pull
   [project {merge-commit-sha :merge_commit_sha :as pull}]
@@ -70,6 +70,7 @@
     (if (and project pull (contains? #{"opened" "reopened" "synchronize"} action))
       (if (and merge-commit-sha last-merge-commit-sha (not= last-merge-commit-sha last-merge-commit-sha))
         (bg/submit-job {} handle-ready-pull-worker project pull merge-commit-sha)
-        ;; If there is no merge commit or it's the same as previous, it means that merge commit not updated yet.
-        ;; In this case we are asking github API up to 3 times until new merge commit becomes available.
+        ;; If there is no merge commit or it's the same as previous, it means that merge commit is either
+        ;; not available or not updated yet. In this case we are asking github API up to 3 times until new
+        ;; merge commit becomes available.
         (bg/submit-job {:retry-limit 2 :retry-delay 5000} handle-unready-pull-worker project full-name pull-num)))))
