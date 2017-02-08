@@ -11,9 +11,15 @@
     (let [result (commit-message-to-markdown "Header of commit message\n\nBody of commit")]
       (is (= result "  - `Header of commit message`"))))
 
-  (testing "when message with body with link to jira"
+  (testing "when message with a link to jira"
     (let [result (commit-message-to-markdown "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18")]
       (is (= result "  - `Header of commit message` [A4-18](https://jira.com/browse/A4-18)"))))
+
+  (testing "when message with links to jira"
+    (let [message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18\nhttps://jira.com/browse/A5-18"
+          result (commit-message-to-markdown message)]
+      (is (= result
+             "  - `Header of commit message` [A4-18](https://jira.com/browse/A4-18) [A5-18](https://jira.com/browse/A5-18)"))))
   )
 
 (deftest commit-messages-to-markdown-test

@@ -30,9 +30,9 @@
 (defn commit-message-to-markdown [message]
   (let [[header body] (str/split message #"\n\n" 2)]
     (if body
-      (let [jira-url (re-find #"https?:\/{2}.*jira[\/\.\w-]+" body)]
-        (if jira-url
-          (str "  - " (md-code header) " " (shorten-url jira-url))
+      (let [jira-urls (re-seq #"https?:\/{2}.*jira[\/\.\w-]+" body)]
+        (if (not-empty jira-urls)
+          (str "  - " (md-code header) " " (->> jira-urls (map shorten-url) (str/join " ")))
           (str "  - " (md-code header))))
       (str "  - " (md-code header)))))
 
