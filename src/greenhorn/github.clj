@@ -48,29 +48,38 @@
       (create-or-update-pull-comment project pull-num diff)
       (db/update-pull project-id pull-num {:last_merge_commit_sha merge-commit-sha}))))
 
+(defn- merge-commit-available?
+  "If there is no merge commit or it's the same as previous, it means that merge commit is either
+  not available or not updated yet and we can't trust it."
+  [{last-merge-commit-sha :last_merge_commit_sha} merge-commit-sha]
+  (and merge-commit-sha (not= last-merge-commit-sha merge-commit-sha)))
+
 (defn handle-pull
-  [project {merge-commit-sha :merge_commit_sha :as pull}]
-  (if-not merge-commit-sha (throw (Exception. "Pull doesn't include merge_commit_sha")))
+  [project {merge-commit-sha :merge_commit_sha :as pull} stored-pull]
+  (if-not (merge-commit-available? stored-pull merge-commit-sha)
+    (throw (Exception. "merge_commit_sha isn't available on given pull")))
   (handle-ready-pull project pull merge-commit-sha))
 
 (bg/define-worker handle-ready-pull-worker [project pull merge-commit-sha]
   (handle-ready-pull project pull merge-commit-sha))
 
-(bg/define-worker handle-unready-pull-worker [project repo-full-name pull-num]
+(bg/define-worker handle-unready-pull-worker
+  [project repo-full-name pull-num stored-pull]
   (let [[org repo] (str/split repo-full-name #"\/")
         pull (api/specific-pull org repo pull-num)]
-    (handle-pull project pull)))
+    (handle-pull project pull stored-pull)))
 
 (defn handle-pull-webhook
   "Start asynchronous handling of a pull_request event"
   [{action :action pull :pull_request}]
   (let [{pull-num :number merge-commit-sha :merge_commit_sha {{full-name :full_name} :repo} :base} pull
         {project-id :id :as project} (db/find-project-by {:full_name full-name})
-        {last-merge-commit-sha :last_merge_commit_sha} (db/find-pull project-id pull-num)]
+         stored-pull (db/find-pull project-id pull-num)]
     (if (and project pull (contains? #{"opened" "reopened" "synchronize"} action))
-      (if (and merge-commit-sha last-merge-commit-sha (not= last-merge-commit-sha last-merge-commit-sha))
+      (if (merge-commit-available? stored-pull merge-commit-sha)
         (bg/submit-job {} handle-ready-pull-worker project pull merge-commit-sha)
-        ;; If there is no merge commit or it's the same as previous, it means that merge commit is either
-        ;; not available or not updated yet. In this case we are asking github API up to 3 times until new
-        ;; merge commit becomes available.
-        (bg/submit-job {:retry-limit 2 :retry-delay 5000} handle-unready-pull-worker project full-name pull-num)))))
+        ;; In the case where merge commit isn't available yet we are
+        ;; asking github API up to 3 times until it becomes available.
+        (bg/submit-job
+         {:retry-limit 2 :retry-delay 5000}
+         handle-unready-pull-worker project full-name pull-num stored-pull)))))

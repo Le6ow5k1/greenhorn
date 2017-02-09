@@ -35,5 +35,5 @@
                                "mysql2" [{:version "0.4.5", :remote "https://rubygems.org/"} {:version "0.4.4", :remote "https://rubygems.org/"}],
                                "pkg-config" [nil {:version "1.1.7", :remote "https://rubygems.org/"}],
                                "kindlerb" [{:version "1.0.1", :remote "https://rubygems.org/"} {:version "0.1.1", :remote "https://rubygems.org/"}]}]
-            (handle-pull {} pull)
+            (handle-pull {} pull {:last_merge_commit_sha "foobar"})
             (is (= @diff-spy expected-diff))))))))
