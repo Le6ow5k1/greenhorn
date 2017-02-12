@@ -2,47 +2,50 @@
   (:require [greenhorn.github.comment-formatting :refer :all]
             [clojure.test :refer :all]))
 
-(deftest commit-message-to-markdown-test
+(deftest commit-to-markdown-test
   (testing "when message without body"
-    (let [result (commit-message-to-markdown "Header of commit message")]
-      (is (= result "  - `Header of commit message`"))))
+    (let [result (commit-to-markdown {:url "http://url.com" :message "Header of commit message"})]
+      (is (= result "  - [`Header of commit message`](http://url.com)"))))
 
   (testing "when message with body"
-    (let [result (commit-message-to-markdown "Header of commit message\n\nBody of commit")]
-      (is (= result "  - `Header of commit message`"))))
+    (let [result (commit-to-markdown {:url "http://url.com" :message "Header of commit message\n\nBody of commit"})]
+      (is (= result "  - [`Header of commit message`](http://url.com)"))))
 
   (testing "when message with a link to jira"
-    (let [result (commit-message-to-markdown "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18")]
-      (is (= result "  - `Header of commit message` [A4-18](https://jira.com/browse/A4-18)"))))
+    (let [result (commit-to-markdown {:url "http://url.com" :message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18"})]
+      (is (= result "  - [`Header of commit message`](http://url.com) [A4-18](https://jira.com/browse/A4-18)"))))
 
   (testing "when message with links to jira"
     (let [message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18\nhttps://jira.com/browse/A5-18"
-          result (commit-message-to-markdown message)]
+          result (commit-to-markdown {:url "http://url.com" :message message})]
       (is (= result
-             "  - `Header of commit message` [A4-18](https://jira.com/browse/A4-18) [A5-18](https://jira.com/browse/A5-18)"))))
+             "  - [`Header of commit message`](http://url.com) [A4-18](https://jira.com/browse/A4-18) [A5-18](https://jira.com/browse/A5-18)"))))
   )
 
-(deftest commit-messages-to-markdown-test
+(deftest commits-to-markdown-test
   (testing "when there are less messages then total commits"
-    (let [result (commit-messages-to-markdown ["message 1" "message 2"] 2)]
+    (let [result (commits-to-markdown [{:url "http://url.com" :message "message 1"}
+                                       {:url "http://url.com" :message "message 2"}] 2)]
       (is (= result
-             (str "  - `message 1`\n"
-                  "  - `message 2`")))))
+             (str "  - [`message 1`](http://url.com)\n"
+                  "  - [`message 2`](http://url.com)")))))
 
   (testing "when there are more messages then total commits"
-    (let [result (commit-messages-to-markdown ["message 1" "message 2"] 4)]
+    (let [result (commits-to-markdown [{:url "http://url.com" :message "message 1"}
+                                       {:url "http://url.com" :message "message 2"}] 4)]
       (is (= result
-             (str "  - `message 1`\n"
-                  "  - `message 2`\n"
-                  "  - ... and 2 more commits")))))
+             (str "  - [`message 1`](http://url.com)\n"
+                  "  - [`message 2`](http://url.com)\n"
+                  "  - ... and 2 more significant commits")))))
 
   (testing "when there are no messages"
-    (let [result (commit-messages-to-markdown [] 0)]
+    (let [result (commits-to-markdown [] 0)]
       (is (= result ""))))
   )
 
 (deftest diff-to-markdown-test
-  (with-redefs [greenhorn.github.api/compare-commit-messages (fn [& args] {:messages ["commit message"] :total_commits 1})]
+  (with-redefs [greenhorn.github.api/compare-commits (fn [& args]
+                                                       {:commits [{:url "http://url.com" :message "commit message"}] :total 1})]
     (testing "when gem is updated"
       (def updated-diff ["rails" [{:version "3.1.0"
                                    :remote "https://rubygems.org/"}
@@ -56,10 +59,10 @@
         (let [result (diff-to-markdown "rails" true updated-diff)]
           (is (= result
                  (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
-                      "  - `commit message`"))))
+                      "  - [`commit message`](http://url.com)"))))
 
         (testing "when there are no commit messages for compare"
-          (with-redefs [greenhorn.github.api/compare-commit-messages (fn [& args] {:messages [] :total_commits 0})]
+          (with-redefs [greenhorn.github.api/compare-commits (fn [& args] {:commits [] :total 0})]
             (let [result (diff-to-markdown "rails" true updated-diff)]
               (is (= result
                      (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)"))))))
@@ -70,7 +73,7 @@
               result (diff-to-markdown "rails" false diff)]
           (is (= result
                  (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
-                      "  - `commit message`")))))
+                      "  - [`commit message`](http://url.com)")))))
 
       (testing "when gem repo doesn't exist in organization and remote not pointing to github"
         (let [result (diff-to-markdown "rails" false updated-diff)]
@@ -116,13 +119,14 @@
                       {:version "3.6.2"
                        :remote "https://rubygems.org/"}]})
 
-  (with-redefs [greenhorn.github.api/compare-commit-messages (fn [& args] {:messages ["commit message"] :total_commits 1})]
+  (with-redefs [greenhorn.github.api/compare-commits (fn [& args]
+                                                       {:commits [{:url "http://url.com" :message "commit message"}] :total 1})]
     (testing "happy path"
       (let [result (diffs-to-markdown "rails" ["rails" "jbuilder"] diffs)]
         (is (= result
                (str "- **jbuilder** has been updated [e0986b3...131df50](https://github.com/rails/jbuilder/compare/e0986b3...131df50)\n"
-                    "  - `commit message`\n"
+                    "  - [`commit message`](http://url.com)\n"
                     "- **puma** has been added v3.6.2\n"
                     "- **rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
-                    "  - `commit message`"))))))
+                    "  - [`commit message`](http://url.com)"))))))
   )

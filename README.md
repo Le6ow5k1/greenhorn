@@ -32,6 +32,7 @@ To start a web server for the application, run:
 
   - [x] Prettify comments
   - [x] Commits from gems diffs, possibly JIRA issues
+  - [x] Filter out insignificant commits
   - [ ] Automatic updates of organization repos
   - [ ] Better error handling, especially in API calls
   - [ ] Smart truncating of large comments

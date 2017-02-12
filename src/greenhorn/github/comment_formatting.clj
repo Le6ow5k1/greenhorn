@@ -26,22 +26,28 @@
 
 (defn- md-code [s] (str "`" s "`"))
 (defn- md-bold [s] (str "**" s "**"))
+(defn- md-url [s url] (str "[" s "]" "(" url ")"))
 
-(defn commit-message-to-markdown [message]
+(defn- jira-urls [commit-body]
+  (let [jira-urls (re-seq #"https?:\/{2}.*jira[\/\.\w-]+" commit-body)]
+    (->> jira-urls (map shorten-url) (str/join " "))))
+
+(defn commit-to-markdown [{:keys [url message]}]
   (let [[header body] (str/split message #"\n\n" 2)]
     (if body
-      (let [jira-urls (re-seq #"https?:\/{2}.*jira[\/\.\w-]+" body)]
+      (let [jira-urls (jira-urls body)]
         (if (not-empty jira-urls)
-          (str "  - " (md-code header) " " (->> jira-urls (map shorten-url) (str/join " ")))
-          (str "  - " (md-code header))))
-      (str "  - " (md-code header)))))
+          (str "  - " (-> header md-code (md-url url)) " " jira-urls)
+          (str "  - " (-> header md-code (md-url url)))))
+      (str "  - " (-> header md-code (md-url url))))))
 
-(defn commit-messages-to-markdown [messages total-commits]
-  (let [over-limit-count (- total-commits (count messages))]
-    (->> messages
-         (mapv commit-message-to-markdown)
+(defn commits-to-markdown [commits total]
+  (let [over-limit-count (- total (count commits))]
+    (->> commits
+         (mapv commit-to-markdown)
          ((fn [m]
-            (or (and (> over-limit-count 0) (conj m (str "  - ... and " over-limit-count " more commits")))
+            (or (and (> over-limit-count 0) (conj m
+                                                  (str "  - ... and " over-limit-count " more significant commits")))
                 m)))
          (str/join "\n"))))
 
@@ -50,8 +56,8 @@
     (if gem-url
       (let [compare-url (compare-url gem-url old-gem new-gem)
             [_ org repo base head] (re-matches #"^.+\/([^\/]+)\/([^\/]+)\/compare\/(.+)\.{3}(.+)$" compare-url)
-            {:keys [messages total_commits]} (api/compare-commit-messages org repo base head)
-            formatted-messages (commit-messages-to-markdown messages total_commits)]
+            {:keys [commits total]} (api/compare-commits org repo base head)
+            formatted-messages (commits-to-markdown commits total)]
         (str updated-str " "
              (shorten-url compare-url)
              (when-not (empty? formatted-messages) (str "\n" formatted-messages))))
