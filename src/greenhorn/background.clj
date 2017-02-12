@@ -28,19 +28,23 @@
               ~str-ns ~symbol-name
               ~symbol-name ~str-ns))))
 
-(defn- -submit-job [job-info]
-  (async/>!! queue job-info))
+(defn- enqueue [job-info]
+  (async/>!! queue job-info)
+  (timbre/info (str "Enqueued job: " job-info)))
 
 (defn submit-job
   "Places a job (worker and it's args) into the queue for future processing.
 
       (submit-job {:retry-limit 4 :retry-delay 3000} send-email \"foo@example.com\" \"Hello, world!\")"
   [opts worker & args]
-  (let [given-opts (select-keys opts [:retry-delay :retry-limit])
-        coerced-opts (merge default-retry-opts given-opts)
-        worker-name (@workers worker)]
-    (timbre/info (str "Queueing job " worker-name " with args: " args))
-    (-submit-job {:worker-name worker-name :args args :opts coerced-opts :retries 0})))
+  (let [given-opts (select-keys opts [:enqueue-delay :retry-delay :retry-limit])
+        {:keys [enqueue-delay] :as coerced-opts} (merge default-retry-opts given-opts)
+        job-info {:worker-name (@workers worker) :args args :opts coerced-opts :retries 0}]
+    (if enqueue-delay
+      (async/go
+        (async/<! (async/timeout enqueue-delay))
+        (enqueue job-info))
+      (enqueue job-info))))
 
 (defn- execute-job
   [buffer-chan timeout-ms]
@@ -59,7 +63,7 @@
             (timbre/error e)
             (when need-retry?
               (async/<!! (async/timeout retry-delay))
-              (-submit-job (update-in job-info [:retries] inc)))))
+              (enqueue (update-in job-info [:retries] inc)))))
         (recur)))))
 
 (defn- thread-pool-service
