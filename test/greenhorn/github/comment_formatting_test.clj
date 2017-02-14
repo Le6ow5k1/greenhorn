@@ -13,13 +13,13 @@
 
   (testing "when message with a link to jira"
     (let [result (commit-to-markdown {:url "http://url.com" :message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18"})]
-      (is (= result "  - [`Header of commit message`](http://url.com) [A4-18](https://jira.com/browse/A4-18)"))))
+      (is (= result "  - [`Header of commit message`](http://url.com) | [A4-18](https://jira.com/browse/A4-18)"))))
 
   (testing "when message with links to jira"
     (let [message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18\nhttps://jira.com/browse/A5-18"
           result (commit-to-markdown {:url "http://url.com" :message message})]
       (is (= result
-             "  - [`Header of commit message`](http://url.com) [A4-18](https://jira.com/browse/A4-18) [A5-18](https://jira.com/browse/A5-18)"))))
+             "  - [`Header of commit message`](http://url.com) | [A4-18](https://jira.com/browse/A4-18), [A5-18](https://jira.com/browse/A5-18)"))))
   )
 
 (deftest commits-to-markdown-test

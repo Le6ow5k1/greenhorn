@@ -9,9 +9,12 @@
   (let [[_ name-from-remote] (re-matches #".*\/([^\/]+).git$" remote)]
     (= name-from-remote name)))
 
+(defn- md-code [s] (str "`" s "`"))
+(defn- md-bold [s] (str "**" s "**"))
+(defn- md-url [s url] (str "[" s "]" "(" url ")"))
+
 (defn- shorten-url [url]
-  (let [url-desc (re-find #"[^\/]+$" url)]
-    (str "[" url-desc "]" "(" url ")")))
+  (md-url (re-find #"[^\/]+$" url) url))
 
 (defn- gem-ref [{:keys [version revision]}]
   (if revision
@@ -24,20 +27,16 @@
 (defn- compare-url [gem-url old-gem new-gem]
   (str gem-url "/compare/" (compare-str old-gem new-gem)))
 
-(defn- md-code [s] (str "`" s "`"))
-(defn- md-bold [s] (str "**" s "**"))
-(defn- md-url [s url] (str "[" s "]" "(" url ")"))
-
 (defn- jira-urls [commit-body]
   (let [jira-urls (re-seq #"https?:\/{2}.*jira[\/\.\w-]+" commit-body)]
-    (->> jira-urls (map shorten-url) (str/join " "))))
+    (->> jira-urls (map shorten-url) (str/join ", "))))
 
 (defn commit-to-markdown [{:keys [url message]}]
   (let [[header body] (str/split message #"\n\n" 2)]
     (if body
       (let [jira-urls (jira-urls body)]
         (if (not-empty jira-urls)
-          (str "  - " (-> header md-code (md-url url)) " " jira-urls)
+          (str "  - " (-> header md-code (md-url url)) " | " jira-urls)
           (str "  - " (-> header md-code (md-url url)))))
       (str "  - " (-> header md-code (md-url url))))))
 
