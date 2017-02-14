@@ -79,7 +79,7 @@
   (let [{pull-num :number merge-commit-sha :merge_commit_sha {{full-name :full_name} :repo} :base} pull
         {project-id :id :as project} (db/find-project-by {:full_name full-name})
         pull-persisted? (db/find-pull project-id pull-num)
-        enqueue-delay (if pull-persisted? 3000 5000)]
+        enqueue-delay (if pull-persisted? 3000 8000)]
     (if (and project pull (#{"opened" "reopened" "synchronize"} action))
       ;; We are asking github API up to 3 times until merge commit for this pull-request becomes available.
       (bg/submit-job
