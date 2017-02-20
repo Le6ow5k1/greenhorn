@@ -4,7 +4,9 @@
 
 Bot that checks github PR's for changed dependencies in Gemfile.lock.
 
-It analyzes changes made to Gemfile.lock file, determines which dependencies are changed, and posts a comment with list of changes and corresponding links to github compare page.
+It analyzes changes made to Gemfile.lock file, determines which dependencies have changed, and creates a comment with list of changelogs gathered from Github API.
+
+![greenhorn](image.png)
 
 ## Development
 
