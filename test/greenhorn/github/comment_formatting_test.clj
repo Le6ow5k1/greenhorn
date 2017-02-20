@@ -36,7 +36,7 @@
       (is (= result
              (str "  - [`message 1`](http://url.com)\n"
                   "  - [`message 2`](http://url.com)\n"
-                  "  - ... and 2 more significant commits")))))
+                  "  - ... and 2 more significant commit(s)")))))
 
   (testing "when there are no messages"
     (let [result (commits-to-markdown [] 0)]

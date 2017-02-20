@@ -9,13 +9,6 @@
   (let [[_ name-from-remote] (re-matches #".*\/([^\/]+).git$" remote)]
     (= name-from-remote name)))
 
-(defn- md-code [s] (str "`" s "`"))
-(defn- md-bold [s] (str "**" s "**"))
-(defn- md-url [s url] (str "[" s "]" "(" url ")"))
-
-(defn- shorten-url [url]
-  (md-url (re-find #"[^\/]+$" url) url))
-
 (defn- gem-ref [{:keys [version revision]}]
   (if revision
     (->> revision (take 7) (apply str))
@@ -27,6 +20,9 @@
 (defn- compare-url [gem-url old-gem new-gem]
   (str gem-url "/compare/" (compare-str old-gem new-gem)))
 
+(defn- shorten-url [url]
+  (format "[%s](%s)" (re-find #"[^\/]+$" url) url))
+
 (defn- jira-urls [commit-body]
   (let [jira-urls (re-seq #"https?:\/{2}.*jira[\/\.\w-]+" commit-body)]
     (->> jira-urls (map shorten-url) (str/join ", "))))
@@ -36,22 +32,21 @@
     (if body
       (let [jira-urls (jira-urls body)]
         (if (not-empty jira-urls)
-          (str "  - " (-> header md-code (md-url url)) " | " jira-urls)
-          (str "  - " (-> header md-code (md-url url)))))
-      (str "  - " (-> header md-code (md-url url))))))
+          (format "  - [`%s`](%s) | %s" header url jira-urls)
+          (format "  - [`%s`](%s)" header url)))
+      (format "  - [`%s`](%s)" header url))))
 
 (defn commits-to-markdown [commits total]
-  (let [over-limit-count (- total (count commits))]
+  (let [over-limit (- total (count commits))]
     (->> commits
          (mapv commit-to-markdown)
          ((fn [m]
-            (or (and (> over-limit-count 0) (conj m
-                                                  (str "  - ... and " over-limit-count " more significant commits")))
+            (or (and (> over-limit 0) (conj m (str "  - ... and " over-limit " more significant commit(s)")))
                 m)))
          (str/join "\n"))))
 
 (defn- gem-updated-str-md [name gem-url old-gem new-gem]
-  (let [updated-str (str (md-bold name) " has been updated")]
+  (let [updated-str (format "**%s** has been updated" name)]
     (if gem-url
       (let [compare-url (compare-url gem-url old-gem new-gem)
             [_ org repo base head] (re-matches #"^.+\/([^\/]+)\/([^\/]+)\/compare\/(.+)\.{3}(.+)$" compare-url)
@@ -65,8 +60,8 @@
 (defn- gem-added-str-md [name gem-url gem-spec]
   (if gem-url
     (let [gem-ref-url (str gem-url "/tree/" (gem-ref gem-spec))]
-      (str (md-bold name) " has been added " (shorten-url gem-ref-url)))
-    (str (md-bold name) " has been added " (gem-ref gem-spec))))
+      (format "**%s** has been added %s" name (shorten-url gem-ref-url)))
+    (format "**%s** has been added %s" name (gem-ref gem-spec))))
 
 (defn- gem-url-from-remote
   "Trying to infer gem url from remote"
@@ -93,7 +88,7 @@
       (and (nil? old-gem)
            (not (nil? new-gem))) (gem-added-str-md name gem-url new-gem)
       (and (nil? new-gem)
-           (not (nil? old-gem))) (str (md-bold name) " has been deleted")
+           (not (nil? old-gem))) (format "**%s** has been deleted" name)
       :else (gem-updated-str-md name gem-url old-gem new-gem))))
 
 (defn diffs-to-markdown
