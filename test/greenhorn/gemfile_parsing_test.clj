@@ -18,7 +18,7 @@
       activesupport (= 3.1.12)
     active_hash (1.4.1)"]
       (is (=
-           (vec (parse-lock-file s))
+           (->> s parse-lock-file (mapv (partial into {})))
            [{:name "actionmailer"
              :version "3.1.12"
              :remote "git://github.com/rails/rails.git"
@@ -62,21 +62,36 @@
       pg-hstore (>= 1.1.5)
       rake"]
       (is (=
-           (vec (parse-lock-file s))
+           (->> s parse-lock-file (mapv (partial into {})))
            [{:name "aasm"
              :version "3.1.1"
+             :revision nil
+             :ref nil
+             :branch nil
              :remote "https://rubygems.org/, https://gems.railsc.ru/, https://rails-assets.org/"}
             {:name "active_attr"
              :version "0.9.0"
+             :revision nil
+             :ref nil
+             :branch nil
              :remote "https://rubygems.org/, https://gems.railsc.ru/, https://rails-assets.org/"}
             {:name "active_hash"
              :version "1.4.1"
+             :revision nil
+             :ref nil
+             :branch nil
              :remote "https://rubygems.org/, https://gems.railsc.ru/, https://rails-assets.org/"}
             {:name "active_support-lazy_load_patch"
              :version "0.0.2"
+             :revision nil
+             :ref nil
+             :branch nil
              :remote "https://rubygems.org/, https://gems.railsc.ru/, https://rails-assets.org/"}
             {:name "activerecord-postgres-hstore"
              :version "0.7.8"
+             :revision nil
+             :ref nil
+             :branch nil
              :remote "https://rubygems.org/, https://gems.railsc.ru/, https://rails-assets.org/"}]
            ))))
   )
@@ -92,8 +107,19 @@
   specs:
     aasm (3.2.1)"]
       (is (= (diff-lock-files old-lock new-lock)
-             {"aasm" [{:version "3.1.1" :remote "https://rubygems.org/"}
-                      {:version "3.2.1" :remote "https://rubygems.org/"}]}))))
+             [#greenhorn.gemfile_parsing.GemDiff{:name "aasm",
+                                                 :base-gem #greenhorn.gemfile_parsing.Gem{:name "aasm"
+                                                                                          :version "3.1.1"
+                                                                                          :revision nil
+                                                                                          :ref nil
+                                                                                          :branch nil
+                                                                                          :remote "https://rubygems.org/"},
+                                                 :head-gem #greenhorn.gemfile_parsing.Gem{:name "aasm"
+                                                                                          :version "3.2.1"
+                                                                                          :revision nil
+                                                                                          :ref nil
+                                                                                          :branch nil
+                                                                                          :remote "https://rubygems.org/"}}]))))
 
   (testing "diff in GIT section by revision"
     (let [old-lock "GIT
@@ -107,8 +133,19 @@
   specs:
     actionmailer (3.1.12)"]
       (is (= (diff-lock-files old-lock new-lock)
-             {"actionmailer" [{:version "3.1.12" :remote "git://github.com/rails/rails.git" :revision "325008e70fd57abaf80b172bd1ed451f4e6dd4ab" :ref nil :branch nil}
-                              {:version "3.1.12" :remote "git://github.com/rails/rails.git" :revision "131df504e315aaa72ba72f854485a642001c2cf4" :ref nil :branch nil}]}))))
+             [#greenhorn.gemfile_parsing.GemDiff{:name "actionmailer",
+                                                 :base-gem #greenhorn.gemfile_parsing.Gem{:name "actionmailer"
+                                                                                          :version "3.1.12"
+                                                                                          :revision "325008e70fd57abaf80b172bd1ed451f4e6dd4ab"
+                                                                                          :ref nil
+                                                                                          :branch nil
+                                                                                          :remote "git://github.com/rails/rails.git"},
+                                                 :head-gem #greenhorn.gemfile_parsing.Gem{:name "actionmailer"
+                                                                                          :version "3.1.12"
+                                                                                          :revision "131df504e315aaa72ba72f854485a642001c2cf4"
+                                                                                          :ref nil
+                                                                                          :branch nil
+                                                                                          :remote "git://github.com/rails/rails.git"}}]))))
 
   (testing "gem removed and gem added"
     (let [old-lock "GIT
@@ -125,10 +162,22 @@
       interactor (>= 3.0)
       postgresql_cursor (>= 0.6.1)"]
       (is (= (diff-lock-files old-lock new-lock)
-             {"actionmailer" [{:version "3.1.12" :remote "git@github.com:rails/actionmailer.git" :revision "131df504e315aaa72ba72f854485a642001c2cf4" :ref nil :branch nil}
-                              nil]
-              "activemodel" [nil
-                             {:version "3.1.0" :remote "https://rubygems.org/"}]}))))
+             [#greenhorn.gemfile_parsing.GemDiff{:name "actionmailer",
+                                                 :base-gem #greenhorn.gemfile_parsing.Gem{:name "actionmailer"
+                                                                                          :version "3.1.12"
+                                                                                          :revision "131df504e315aaa72ba72f854485a642001c2cf4"
+                                                                                          :ref nil
+                                                                                          :branch nil
+                                                                                          :remote "git@github.com:rails/actionmailer.git"},
+                                                 :head-gem nil}
+              #greenhorn.gemfile_parsing.GemDiff{:name "activemodel",
+                                                 :base-gem nil
+                                                 :head-gem #greenhorn.gemfile_parsing.Gem{:name "activemodel"
+                                                                                          :version "3.1.0"
+                                                                                          :revision nil
+                                                                                          :ref nil
+                                                                                          :branch nil
+                                                                                          :remote "https://rubygems.org/"}}]))))
 
   (testing "diff in GEM and GIT section"
     (let [old-lock "GEM
@@ -141,8 +190,19 @@
   specs:
     actionmailer (3.1.12)"]
       (is (= (diff-lock-files old-lock new-lock)
-             {"actionmailer" [{:version "3.1.0" :remote "https://rubygems.org/"}
-                              {:version "3.1.12" :remote "git://github.com/rails/rails.git" :revision "131df504e315aaa72ba72f854485a642001c2cf4" :ref nil :branch nil}]}))))
+             [#greenhorn.gemfile_parsing.GemDiff{:name "actionmailer",
+                                                 :base-gem #greenhorn.gemfile_parsing.Gem{:name "actionmailer"
+                                                                                          :version "3.1.0"
+                                                                                          :revision nil
+                                                                                          :ref nil
+                                                                                          :branch nil
+                                                                                          :remote "https://rubygems.org/"},
+                                                 :head-gem #greenhorn.gemfile_parsing.Gem{:name "actionmailer"
+                                                                                          :version "3.1.12"
+                                                                                          :revision "131df504e315aaa72ba72f854485a642001c2cf4"
+                                                                                          :ref nil
+                                                                                          :branch nil
+                                                                                          :remote "git://github.com/rails/rails.git"}}]))))
 
   (testing "diff in GIT and GEM section"
     (let [old-lock "GIT
@@ -159,8 +219,19 @@
       interactor (>= 3.0)
       postgresql_cursor (>= 0.6.1)"]
       (is (= (diff-lock-files old-lock new-lock)
-             {"actionmailer" [{:version "3.1.12" :remote "git@github.com:rails/actionmailer.git" :revision "131df504e315aaa72ba72f854485a642001c2cf4" :ref nil :branch nil}
-                              {:version "3.1.0" :remote "https://rubygems.org/"}]}))))
+             [#greenhorn.gemfile_parsing.GemDiff{:name "actionmailer",
+                                                 :base-gem #greenhorn.gemfile_parsing.Gem{:name "actionmailer"
+                                                                                          :version "3.1.12"
+                                                                                          :revision "131df504e315aaa72ba72f854485a642001c2cf4"
+                                                                                          :ref nil
+                                                                                          :branch nil
+                                                                                          :remote "git@github.com:rails/actionmailer.git"},
+                                                 :head-gem #greenhorn.gemfile_parsing.Gem{:name "actionmailer"
+                                                                                          :version "3.1.0"
+                                                                                          :revision nil
+                                                                                          :ref nil
+                                                                                          :branch nil
+                                                                                          :remote "https://rubygems.org/"}}]))))
 
   (testing "gems differs only in remote"
     (let [old-lock "GIT
@@ -177,5 +248,5 @@
   specs:
     actionmailer (3.1.12)
       class_logger (~> 1.0.1)"]
-      (is (= (diff-lock-files old-lock new-lock) {}))))
+      (is (= (diff-lock-files old-lock new-lock) []))))
   )

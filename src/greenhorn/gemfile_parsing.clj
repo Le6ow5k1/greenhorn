@@ -1,7 +1,30 @@
 (ns greenhorn.gemfile-parsing
   (:require [clojure.string :as str]
             [clojure.set :as set]
-            [clojure.data :as data]))
+            [clojure.data :as data]
+            [taoensso.timbre :as timbre]))
+
+(defprotocol Dependency
+  (name [d])
+  (version [d])
+  (revision [d]))
+
+(defrecord Gem [name version revision ref branch]
+  Dependency
+  (name [d] (d :name))
+  (version [d] (d :version))
+  (revision [d] (d :revision)))
+
+(defprotocol DependencyDiff
+  (name [d])
+  (added? [d])
+  (removed? [d]))
+
+(defrecord GemDiff [name base-gem head-gem]
+  DependencyDiff
+  (name [d] (d :name))
+  (added? [d] (and (nil? base-gem) head-gem))
+  (removed? [d] (and base-gem (nil? head-gem))))
 
 (def ^:private specs-section-re
   #"(?:\s{4}((?:\w|-|\.)+)\s\(((?:\w|\.)+)\))+\n?(?:\s{6}.*)*")
@@ -35,7 +58,7 @@
                         (slurp file-name-or-content)
                         file-name-or-content)
         sections (str/split file-contents #"\n\n")]
-    (->> sections (map parse-section) (reduce concat))))
+    (->> sections (map (comp (partial map map->Gem) parse-section)) (reduce concat))))
 
 (defn- select-diff-related-keys [[gem]]
   (select-keys gem [:revision :version :name]))
@@ -52,18 +75,18 @@
       => {\"activemodel\" [{:version \"3.1.0\" :remote \"https://rubygems.org/\"}
                            {:version \"4.0.0\" :remote \"https://rubygems.org/\"}]}
   "
-  [old-lock new-lock]
-  (let [parsed-old (->> old-lock parse-lock-file (group-by :name))
-        parsed-new (->> new-lock parse-lock-file (group-by :name))
-        old-gemset (->> parsed-old vals (map select-diff-related-keys) set)
-        new-gemset (->> parsed-new vals (map select-diff-related-keys) set)
-        [old-gems new-gems & _] (data/diff old-gemset new-gemset)
-        old-gems-by-name (select-keys parsed-old (map :name old-gems))
-        new-gems-by-name (select-keys parsed-new (map :name new-gems))]
+  [base-lock head-lock]
+  (let [parsed-base (->> base-lock parse-lock-file (group-by :name))
+        parsed-head (->> head-lock parse-lock-file (group-by :name))
+        base-gemset (->> parsed-base vals (map select-diff-related-keys) set)
+        head-gemset (->> parsed-head vals (map select-diff-related-keys) set)
+        [base-gems head-gems & _] (data/diff base-gemset head-gemset)
+        base-gems-by-name (select-keys parsed-base (map :name base-gems))
+        head-gems-by-name (select-keys parsed-head (map :name head-gems))]
     (reduce
      (fn [acc name]
-       (let [[old-gem] (old-gems-by-name name)
-             [new-gem] (new-gems-by-name name)]
-         (assoc acc name [(dissoc old-gem :name) (dissoc new-gem :name)])))
-     {}
-     (into #{} (into (keys old-gems-by-name) (keys new-gems-by-name))))))
+       (let [[base-gem] (base-gems-by-name name)
+             [head-gem] (head-gems-by-name name)]
+         (conj acc (->GemDiff name base-gem head-gem))))
+     []
+     (into #{} (into (keys base-gems-by-name) (keys head-gems-by-name))))))
