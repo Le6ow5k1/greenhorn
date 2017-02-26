@@ -1,5 +1,6 @@
 (ns greenhorn.github.comment-formatting-test
   (:require [greenhorn.github.comment-formatting :refer :all]
+            [greenhorn.github.dependency-commentable :refer :all]
             [clojure.test :refer :all]))
 
 (deftest commit-to-markdown-test
@@ -43,90 +44,115 @@
       (is (= result ""))))
   )
 
-(deftest diff-to-markdown-test
+(deftest to-comment-test
   (with-redefs [greenhorn.github.api/compare-commits (fn [& args]
                                                        {:commits [{:url "http://url.com" :message "commit message"}] :total 1})]
     (testing "when gem is updated"
-      (def updated-diff ["rails" [{:version "3.1.0"
-                                   :remote "https://rubygems.org/"}
-                                  {:version "3.1.12"
-                                   :remote "git://github.com/rails/rails.git"
-                                   :revision "131df504e315aaa72ba72f854485a642001c2cf4"
-                                   :ref nil
-                                   :branch nil}]])
+      (def updated-diff #greenhorn.gemfile_parsing.GemDiff{:name "rails",
+                                                           :base-gem #greenhorn.gemfile_parsing.Gem{:name "rails"
+                                                                                                    :version "3.1.0"
+                                                                                                    :revision nil
+                                                                                                    :ref nil
+                                                                                                    :branch nil
+                                                                                                    :remote "https://rubygems.org/"},
+                                                           :head-gem #greenhorn.gemfile_parsing.Gem{:name "rails"
+                                                                                                    :version "3.1.12"
+                                                                                                    :remote "git://github.com/rails/rails.git"
+                                                                                                    :revision "131df504e315aaa72ba72f854485a642001c2cf4"
+                                                                                                    :ref nil
+                                                                                                    :branch nil}})
 
       (testing "when gem repo exists in organization"
-        (let [result (diff-to-markdown "rails" true updated-diff)]
+        (let [result (to-comment updated-diff {:gems-org "rails" :gem-repo-present? true})]
           (is (= result
                  (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
                       "  - [`commit message`](http://url.com)"))))
 
         (testing "when there are no commit messages for compare"
           (with-redefs [greenhorn.github.api/compare-commits (fn [& args] {:commits [] :total 0})]
-            (let [result (diff-to-markdown "rails" true updated-diff)]
+            (let [result (to-comment updated-diff {:gems-org "rails" :gem-repo-present? true})]
               (is (= result
                      (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)"))))))
         )
 
       (testing "when gem repo doesn't exist in organization and remote pointing to github"
-        (let [diff (assoc-in updated-diff [1 0 :remote] "git://github.com/rails/rails.git")
-              result (diff-to-markdown "rails" false diff)]
+        (let [diff (assoc-in updated-diff [:base-gem :remote] "git://github.com/rails/rails.git")
+              result (to-comment diff {:gems-org "rails" :gem-repo-present? false})]
           (is (= result
                  (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
                       "  - [`commit message`](http://url.com)")))))
 
       (testing "when gem repo doesn't exist in organization and remote not pointing to github"
-        (let [result (diff-to-markdown "rails" false updated-diff)]
+        (let [result (to-comment updated-diff {:gems-org "rails" :gem-repo-present? false})]
           (is (= result
                  "**rails** has been updated v3.1.0...131df50"))))
       )
 
     (testing "when gem is added"
-      (def added-diff ["rails" [nil
-                                {:version "3.1.0"
-                                 :remote "https://rubygems.org/"}]])
+      (def added-diff #greenhorn.gemfile_parsing.GemDiff{:name "rails",
+                                                         :base-gem nil,
+                                                         :head-gem #greenhorn.gemfile_parsing.Gem{:name "rails"
+                                                                                                  :version "3.1.0"
+                                                                                                  :remote "https://rubygems.org/"
+                                                                                                  :revision nil
+                                                                                                  :ref nil
+                                                                                                  :branch nil}})
 
-      (let [result (diff-to-markdown "rails" true added-diff)]
+      (let [result (to-comment added-diff {:gems-org "rails" :gem-repo-present? true})]
         (is (= result
                "**rails** has been added [v3.1.0](https://github.com/rails/rails/tree/v3.1.0)")))
 
       (testing "when gem doesn't exist in organization"
-        (let [result (diff-to-markdown "rails" nil added-diff)]
+        (let [result (to-comment added-diff {:gems-org "rails" :gem-repo-present? nil})]
           (is (= result "**rails** has been added v3.1.0"))))
       )
     )
   )
 
-(deftest diffs-to-markdown-test
-  (def diffs {"rails" [{:version "3.1.0"
-                        :remote "https://rubygems.org/"}
-                       {:version "3.1.12"
-                        :remote "git://github.com/rails/rails.git"
-                        :revision "131df504e315aaa72ba72f854485a642001c2cf4"
-                        :ref nil
-                        :branch nil}]
-              "jbuilder" [{:version "2.5.1"
-                           :remote "git://github.com/rails/jbuilder.git"
-                           :revision "e0986b357ecd2062c38fa6f7215bbdc494396803"
-                           :ref nil
-                           :branch nil}
-                          {:version "2.6.1"
-                           :remote "git://github.com/rails/jbuilder.git"
-                           :revision "131df504e315aaa72ba72f854485a642001c2cf4"
-                           :ref nil
-                           :branch nil}]
-              "puma" [nil
-                      {:version "3.6.2"
-                       :remote "https://rubygems.org/"}]})
+(deftest diffs-to-comment-test
+  (def diffs [#greenhorn.gemfile_parsing.GemDiff{:name "rails",
+                                                 :base-gem #greenhorn.gemfile_parsing.Gem{:name "rails"
+                                                                                          :version "3.1.0"
+                                                                                          :revision nil
+                                                                                          :ref nil
+                                                                                          :branch nil
+                                                                                          :remote "git@github.com:rails/actionmailer.git"},
+                                                 :head-gem #greenhorn.gemfile_parsing.Gem{:name "rails"
+                                                                                          :version "3.1.12"
+                                                                                          :remote "git://github.com/rails/rails.git"
+                                                                                          :revision "131df504e315aaa72ba72f854485a642001c2cf4"
+                                                                                          :ref nil
+                                                                                          :branch nil}}
+              #greenhorn.gemfile_parsing.GemDiff{:name "jbuilder",
+                                                 :base-gem #greenhorn.gemfile_parsing.Gem{:name "jbuilder"
+                                                                                          :version "2.5.1"
+                                                                                          :remote "git://github.com/rails/jbuilder.git"
+                                                                                          :revision "e0986b357ecd2062c38fa6f7215bbdc494396803"
+                                                                                          :ref nil
+                                                                                          :branch nil},
+                                                 :head-gem #greenhorn.gemfile_parsing.Gem{:name "jbuilder"
+                                                                                          :version "2.6.1"
+                                                                                          :remote "git://github.com/rails/jbuilder.git"
+                                                                                          :revision "131df504e315aaa72ba72f854485a642001c2cf4"
+                                                                                          :ref nil
+                                                                                          :branch nil}}
+              #greenhorn.gemfile_parsing.GemDiff{:name "puma",
+                                                 :base-gem nil,
+                                                 :head-gem #greenhorn.gemfile_parsing.Gem{:name "puma"
+                                                                                          :version "3.6.2"
+                                                                                          :remote "https://rubygems.org/"
+                                                                                          :revision "131df504e315aaa72ba72f854485a642001c2cf4"
+                                                                                          :ref nil
+                                                                                          :branch nil}}])
 
   (with-redefs [greenhorn.github.api/compare-commits (fn [& args]
                                                        {:commits [{:url "http://url.com" :message "commit message"}] :total 1})]
     (testing "happy path"
-      (let [result (diffs-to-markdown "rails" ["rails" "jbuilder"] diffs)]
+      (let [result (diffs-to-comment "rails" ["rails" "jbuilder"] diffs)]
         (is (= result
                (str "- **jbuilder** has been updated [e0986b3...131df50](https://github.com/rails/jbuilder/compare/e0986b3...131df50)\n"
                     "  - [`commit message`](http://url.com)\n"
-                    "- **puma** has been added v3.6.2\n"
+                    "- **puma** has been added 131df50\n"
                     "- **rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
                     "  - [`commit message`](http://url.com)"))))))
   )

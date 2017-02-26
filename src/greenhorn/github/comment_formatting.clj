@@ -1,7 +1,11 @@
 (ns greenhorn.github.comment-formatting
   (:require [clojure.string :as str]
             [greenhorn.github.api :as api]
-            [taoensso.timbre :as timbre]))
+            [greenhorn.github.dependency-commentable :refer :all]
+            [greenhorn.dependencies :refer :all]
+            [greenhorn.gemfile-parsing]
+            [taoensso.timbre :as timbre])
+  (:import [greenhorn.gemfile_parsing Gem GemDiff]))
 
 (def html-url (str "https://github.com/"))
 
@@ -45,7 +49,7 @@
                 m)))
          (str/join "\n"))))
 
-(defn- gem-updated-str-md [name gem-url old-gem new-gem]
+(defn- updated-diff-to-comment [name gem-url old-gem new-gem]
   (let [updated-str (format "**%s** has been updated" name)]
     (if gem-url
       (let [compare-url (compare-url gem-url old-gem new-gem)
@@ -56,12 +60,6 @@
              (shorten-url compare-url)
              (when-not (empty? formatted-messages) (str "\n" formatted-messages))))
       (str updated-str " " (compare-str old-gem new-gem)))))
-
-(defn- gem-added-str-md [name gem-url gem-spec]
-  (if gem-url
-    (let [gem-ref-url (str gem-url "/tree/" (gem-ref gem-spec))]
-      (format "**%s** has been added %s" name (shorten-url gem-ref-url)))
-    (format "**%s** has been added %s" name (gem-ref gem-spec))))
 
 (defn- gem-url-from-remote
   "Trying to infer gem url from remote"
@@ -78,25 +76,32 @@
           (str/replace #"git(@|://)github.com/" html-url)
           (str/replace #".git$" "")))))
 
-(defn diff-to-markdown
-  [gems-org
-   gem-repo-present?
-   [name [{old-remote :remote :as old-gem} {new-remote :remote :as new-gem}]]]
-  (let [gem-url (or (gem-url-from-remote name old-remote new-remote)
-                    (when gem-repo-present? (str html-url gems-org "/" name)))]
-    (cond
-      (and (nil? old-gem)
-           (not (nil? new-gem))) (gem-added-str-md name gem-url new-gem)
-      (and (nil? new-gem)
-           (not (nil? old-gem))) (format "**%s** has been deleted" name)
-      :else (gem-updated-str-md name gem-url old-gem new-gem))))
+(extend-type Gem
+  DependencyCommentable
+  (added-comment [{name :name :as gem} {gem-url :gem-url}]
+    (if gem-url
+      (let [gem-ref-url (str gem-url "/tree/" (gem-ref gem))]
+        (format "**%s** has been added %s" name (shorten-url gem-ref-url)))
+      (format "**%s** has been added %s" name (gem-ref gem))))
+  (removed-comment [gem] (format "**%s** has been deleted" name)))
 
-(defn diffs-to-markdown
+(extend-type GemDiff
+  DependencyDiffCommentable
+  (to-comment [{:keys [name base-gem head-gem] :as diff} {:keys [gems-org gem-repo-present?]}]
+    (let [gem-url (or (gem-url-from-remote name (:remote base-gem) (:remote head-gem))
+                      (when gem-repo-present? (str html-url gems-org "/" name)))]
+      (cond
+        (added? diff) (added-comment head-gem {:gem-url gem-url})
+        (removed? diff) (removed-comment base-gem)
+        :else (updated-diff-to-comment name gem-url base-gem head-gem)))))
+
+(defn diffs-to-comment
   "Turns sequence of gem diffs into markdown string"
   [gems-org org-repos diffs]
   (->> diffs
-       (sort-by first)
+       (sort-by :name)
        (mapv
-        (fn [[name _ :as diff]]
-          (str "- " (diff-to-markdown gems-org (some #{name} org-repos) diff))))
+        (fn [diff]
+          (let [opts {:gems-org gems-org :gem-repo-present? (some #{(:name diff)} org-repos)}]
+            (str "- " (to-comment diff opts)))))
        (str/join "\n")))

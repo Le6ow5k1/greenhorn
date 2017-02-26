@@ -2,12 +2,8 @@
   (:require [clojure.string :as str]
             [clojure.set :as set]
             [clojure.data :as data]
+            [greenhorn.dependencies :refer [Dependency DependencyDiff]]
             [taoensso.timbre :as timbre]))
-
-(defprotocol Dependency
-  (name [d])
-  (version [d])
-  (revision [d]))
 
 (defrecord Gem [name version revision ref branch]
   Dependency
@@ -15,14 +11,9 @@
   (version [d] (d :version))
   (revision [d] (d :revision)))
 
-(defprotocol DependencyDiff
-  (name [d])
-  (added? [d])
-  (removed? [d]))
-
 (defrecord GemDiff [name base-gem head-gem]
   DependencyDiff
-  (name [d] (d :name))
+  (name [d] (:name d))
   (added? [d] (and (nil? base-gem) head-gem))
   (removed? [d] (and base-gem (nil? head-gem))))
 

@@ -2,7 +2,7 @@
   (:require [greenhorn.gemfile-parsing :as parsing]
             [greenhorn.background :as bg]
             [greenhorn.db :as db]
-            [greenhorn.github.comment-formatting :refer [diffs-to-markdown]]
+            [greenhorn.github.comment-formatting :refer [diffs-to-comment]]
             [greenhorn.github.api :as api]
             [clj-http.client :as http]
             [clojure.string :as str]
@@ -27,7 +27,7 @@
 (defn- create-or-update-pull-comment
   [{project-id :id repo-path :full_name gems-org :gems_org org-repos :org_repos} pull-num diff]
   (let [{saved-comment-id :comment_id} (db/find-pull project-id pull-num)
-        body (diffs-to-markdown gems-org org-repos diff)]
+        body (diffs-to-comment gems-org org-repos diff)]
     (if saved-comment-id
       (api/update-pull-comment repo-path saved-comment-id body)
       (let [{comment-id :id} (api/create-pull-comment repo-path pull-num body)]
