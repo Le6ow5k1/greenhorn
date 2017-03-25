@@ -75,7 +75,7 @@
                (gem-name-and-remote-matches? name old-remote)
                (gem-name-and-remote-matches? name new-remote))
       (-> new-remote
-          (str/replace #"git(@|://)github.com/" html-url)
+          (str/replace #"git(@|://)github.com(/|:)" html-url)
           (str/replace #".git$" "")))))
 
 (defn diff-to-markdown

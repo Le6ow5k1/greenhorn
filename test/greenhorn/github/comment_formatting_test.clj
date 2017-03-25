@@ -1,6 +1,7 @@
 (ns greenhorn.github.comment-formatting-test
   (:require [greenhorn.github.comment-formatting :refer :all]
-            [clojure.test :refer :all]))
+            [clojure.test :refer :all]
+            [taoensso.timbre :as timbre]))
 
 (deftest commit-to-markdown-test
   (testing "when message without body"
@@ -68,9 +69,9 @@
                      (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)"))))))
         )
 
-      (testing "when gem repo doesn't exist in organization and remote pointing to github"
-        (let [diff (assoc-in updated-diff [1 0 :remote] "git://github.com/rails/rails.git")
-              result (diff-to-markdown "rails" false diff)]
+      (testing "when gem repo exist in organization and both remotes pointing to github"
+        (let [diff (assoc-in updated-diff [1 0 :remote] "git@github.com:rails/rails.git")
+              result (diff-to-markdown "rails" true diff)]
           (is (= result
                  (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
                       "  - [`commit message`](http://url.com)")))))
