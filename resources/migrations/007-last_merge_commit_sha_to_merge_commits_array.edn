@@ -1,0 +1,5 @@
+{:up   ["ALTER TABLE pulls ADD COLUMN merge_commits varchar[];
+         update pulls set merge_commits = array[last_merge_commit_sha];
+         ALTER TABLE pulls DROP COLUMN last_merge_commit_sha;"]
+ :down ["ALTER TABLE pulls ADD COLUMN last_merge_commit_sha varchar(40);
+         ALTER TABLE pulls DROP COLUMN merge_commits;"]}

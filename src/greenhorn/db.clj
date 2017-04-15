@@ -17,11 +17,16 @@
     (let [conn (jdbc/get-connection db-uri)]
       (.createArrayOf conn "varchar" (into-array String v)))))
 
+(defn add-merge-commit-to-pull [project-id num merge-commit]
+  (jdbc/execute!
+   db-uri
+   ["update pulls set merge_commits = array_append(merge_commits, '?') where project-id = ? and num = ?"
+    merge-commit
+    project-id
+    num]))
+
 (defn create-pull [attrs]
   (jdbc/insert! db-uri :pulls attrs))
-
-(defn update-pull [project-id num attrs]
-  (jdbc/update! db-uri :pulls attrs ["project_id = ? and num = ?" project-id num]))
 
 (defn find-pull [project-id num]
   (let [result (jdbc/find-by-keys db-uri :pulls {:project_id project-id :num num})]
