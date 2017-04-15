@@ -45,17 +45,23 @@
                 m)))
          (str/join "\n"))))
 
+(defn- build-commit-messages-part [commits total status]
+  (cond
+    (= status "behind") "\n:arrow_down: this is a downgrade"
+    (not-empty commits) (str "\n" (commits-to-markdown commits total))
+    :else "\n:exclamation: no commits found for diff"))
+
 (defn- gem-updated-str-md [name gem-url old-gem new-gem]
-  (let [updated-str (format "**%s** has been updated" name)]
+  (let [gem-updated-part (format "**%s** has been updated" name)]
     (if gem-url
       (let [compare-url (compare-url gem-url old-gem new-gem)
             [_ org repo base head] (re-matches #"^.+\/([^\/]+)\/([^\/]+)\/compare\/(.+)\.{3}(.+)$" compare-url)
-            {:keys [commits total]} (api/compare-commits org repo base head)
-            formatted-messages (commits-to-markdown commits total)]
-        (str updated-str " "
+            {:keys [commits total status]} (api/compare-commits org repo base head)
+            commit-messages-part (build-commit-messages-part commits total status)]
+        (str gem-updated-part " "
              (shorten-url compare-url)
-             (when-not (empty? formatted-messages) (str "\n" formatted-messages))))
-      (str updated-str " " (compare-str old-gem new-gem)))))
+             commit-messages-part))
+      (str gem-updated-part " " (compare-str old-gem new-gem)))))
 
 (defn- gem-added-str-md [name gem-url gem-spec]
   (if gem-url

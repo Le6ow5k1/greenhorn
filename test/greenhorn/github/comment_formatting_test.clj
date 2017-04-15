@@ -60,14 +60,7 @@
         (let [result (diff-to-markdown "rails" true updated-diff)]
           (is (= result
                  (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
-                      "  - [`commit message`](http://url.com)"))))
-
-        (testing "when there are no commit messages for compare"
-          (with-redefs [greenhorn.github.api/compare-commits (fn [& args] {:commits [] :total 0})]
-            (let [result (diff-to-markdown "rails" true updated-diff)]
-              (is (= result
-                     (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)"))))))
-        )
+                      "  - [`commit message`](http://url.com)")))))
 
       (testing "when gem repo exist in organization and both remotes pointing to github"
         (let [diff (assoc-in updated-diff [1 0 :remote] "git@github.com:rails/rails.git")
@@ -96,6 +89,18 @@
           (is (= result "**rails** has been added v3.1.0"))))
       )
     )
+
+  (testing "when there are no compare commits"
+    (with-redefs [greenhorn.github.api/compare-commits (fn [& args] {:commits [] :total 0 :status "ahead"})]
+      (let [result (diff-to-markdown "rails" true updated-diff)]
+        (is (= result (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)"
+                           "\n:exclamation: no commits found for diff"))))))
+
+  (testing "when there are no compare commits and diff's head is behind base"
+    (with-redefs [greenhorn.github.api/compare-commits (fn [& args] {:commits [] :total 0 :status "behind"})]
+      (let [result (diff-to-markdown "rails" true updated-diff)]
+        (is (= result (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)"
+                           "\n:arrow_down: this is a downgrade"))))))
   )
 
 (deftest diffs-to-markdown-test

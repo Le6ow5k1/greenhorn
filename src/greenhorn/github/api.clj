@@ -22,11 +22,11 @@
   (>= (count parents) 2))
 
 (defn compare-commits
-  "Fetches commit messages up to limit (10 by default) along with commit count from github compare API"
+  "Fetches commit messages up to limit (10 by default) from github compare API"
   [org repo base head & options]
   (let [{limit :limit :or {limit 10}} options
         response (repos-api/compare-commits org repo base head {:auth http-basic-auth-str})
-        {:keys [commits] :or {commits []}} response
+        {:keys [commits status] :or {commits []}} response
         significant-commits (->> commits
                                  reverse
                                  (remove merge-commit?))
@@ -34,7 +34,7 @@
                             (take limit)
                             (mapv (fn [{:keys [html_url commit]}]
                                     {:url html_url :message (commit :message)})))]
-    {:commits result-commits :total (count significant-commits)}))
+    {:commits result-commits :total (count significant-commits) :status status}))
 
 (defn get-file [url & options]
   (let [default-options {:accept "application/vnd.github.v3.raw" :basic-auth http-basic-auth-str}

@@ -28,7 +28,8 @@
                                   :message "Add tests for fragment_cache_key and instrumentation"}
                                  {:url "https://github.com/rails/jbuilder/commit/ddb2985c33c65a3f4233eb8eec98c6d5fc4aaf27",
                                   :message "Split cache read/write methods and add instrumentation following ActionView's cache helpers"}],
-                       :total 12}))))))
+                       :total 12
+                       :status "ahead"}))))))
 
 (deftest get-file-test
   (with-cassette :github/api/get-file [{:var #'clj-http.client/get}]
