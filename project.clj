@@ -1,4 +1,4 @@
-(defproject greenhorn "0.1.0-SNAPSHOT"
+(defproject greenhorn "0.1.0"
   :description "See changelogs for your updated dependencies"
   :url "https://github.com/Le6ow5k1/greenhorn"
   :min-lein-version "2.0.0"
