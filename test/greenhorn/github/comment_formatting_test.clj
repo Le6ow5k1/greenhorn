@@ -12,6 +12,14 @@
     (let [result (commit-to-markdown {:url "http://url.com" :message "Header of commit message\n\nBody of commit"})]
       (is (= result "  - [`Header of commit message`](http://url.com)"))))
 
+  (testing "when there is no blank line between header and body"
+    (let [result (commit-to-markdown {:url "http://url.com" :message "Header of commit message\nBody of commit"})]
+      (is (= result "  - [`Header of commit message`](http://url.com)"))))
+
+  (testing "when there is markdown code in header"
+    (let [result (commit-to-markdown {:url "http://url.com" :message "Header `code` of commit message"})]
+      (is (= result "  - [`Header ``code`` of commit message`](http://url.com)"))))
+
   (testing "when message with a link to jira"
     (let [result (commit-to-markdown {:url "http://url.com" :message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18"})]
       (is (= result "  - [`Header of commit message`](http://url.com) | [A4-18](https://jira.com/browse/A4-18)"))))

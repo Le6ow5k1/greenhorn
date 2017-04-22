@@ -27,14 +27,18 @@
   (let [jira-urls (re-seq #"https?:\/{2}.*jira[\/\.\w-]+" commit-body)]
     (->> jira-urls (map shorten-url) (str/join ", "))))
 
+(defn- escape-markdown-code [s]
+  (str/replace s #"`" "``"))
+
 (defn commit-to-markdown [{:keys [url message]}]
-  (let [[header body] (str/split message #"\n\n" 2)]
+  (let [[header body] (str/split message #"\n" 2)
+        escaped-header (escape-markdown-code header)]
     (if body
       (let [jira-urls (jira-urls body)]
         (if (not-empty jira-urls)
-          (format "  - [`%s`](%s) | %s" header url jira-urls)
-          (format "  - [`%s`](%s)" header url)))
-      (format "  - [`%s`](%s)" header url))))
+          (format "  - [`%s`](%s) | %s" escaped-header url jira-urls)
+          (format "  - [`%s`](%s)" escaped-header url)))
+      (format "  - [`%s`](%s)" escaped-header url))))
 
 (defn commits-to-markdown [commits total]
   (let [over-limit (- total (count commits))]
