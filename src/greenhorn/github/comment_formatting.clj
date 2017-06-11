@@ -40,13 +40,16 @@
           (format "  - [`%s`](%s)" escaped-header url)))
       (format "  - [`%s`](%s)" escaped-header url))))
 
+(defn- add-over-limit-text-if-needed [over-limit-count commit-comments]
+  (if (> over-limit-count 0)
+    (conj commit-comments (str "  - ... and " over-limit-count " more significant commit(s)"))
+    commit-comments))
+
 (defn commits-to-markdown [commits total]
-  (let [over-limit (- total (count commits))]
+  (let [over-limit-count (- total (count commits))]
     (->> commits
          (mapv commit-to-markdown)
-         ((fn [m]
-            (or (and (> over-limit 0) (conj m (str "  - ... and " over-limit " more significant commit(s)")))
-                m)))
+         (add-over-limit-text-if-needed over-limit-count)
          (str/join "\n"))))
 
 (defn- build-commit-messages-part [commits total status]
@@ -55,7 +58,7 @@
     (not-empty commits) (str "\n" (commits-to-markdown commits total))
     :else "\n:exclamation: no commits found for diff"))
 
-(defn- gem-updated-str-md [name gem-url old-gem new-gem]
+(defn- gem-updated-comment [name gem-url old-gem new-gem]
   (let [gem-updated-part (format "**%s** has been updated" name)]
     (if gem-url
       (let [compare-url (compare-url gem-url old-gem new-gem)
@@ -67,17 +70,15 @@
              commit-messages-part))
       (str gem-updated-part " " (compare-str old-gem new-gem)))))
 
-(defn- gem-added-str-md [name gem-url gem-spec]
+(defn- gem-added-comment [name gem-url gem-spec]
   (if gem-url
     (let [gem-ref-url (str gem-url "/tree/" (gem-ref gem-spec))]
       (format "**%s** has been added %s" name (shorten-url gem-ref-url)))
     (format "**%s** has been added %s" name (gem-ref gem-spec))))
 
 (defn- gem-url-from-remote
-  "Trying to infer gem url from remote"
   [name old-remote new-remote]
   (let [git-url-regex #"git(@|://)github.com.*"]
-    ;; If git remote points to github we just replace git:// protocol with https://
     (when (and old-remote
                new-remote
                (re-matches git-url-regex old-remote)
@@ -88,7 +89,7 @@
           (str/replace #"git(@|://)github.com(/|:)" html-url)
           (str/replace #".git$" "")))))
 
-(defn diff-to-markdown
+(defn diff-to-comment
   [gems-org
    gem-repo-present?
    [name [{old-remote :remote :as old-gem} {new-remote :remote :as new-gem}]]]
@@ -96,17 +97,16 @@
                     (when gem-repo-present? (str html-url gems-org "/" name)))]
     (cond
       (and (nil? old-gem)
-           (not (nil? new-gem))) (gem-added-str-md name gem-url new-gem)
+           (not (nil? new-gem))) (gem-added-comment name gem-url new-gem)
       (and (nil? new-gem)
            (not (nil? old-gem))) (format "**%s** has been deleted" name)
-      :else (gem-updated-str-md name gem-url old-gem new-gem))))
+      :else (gem-updated-comment name gem-url old-gem new-gem))))
 
-(defn diffs-to-markdown
-  "Turns sequence of gem diffs into markdown string"
+(defn diffs-to-comment
   [gems-org org-repos diffs]
   (->> diffs
        (sort-by first)
        (mapv
         (fn [[name _ :as diff]]
-          (str "- " (diff-to-markdown gems-org (some #{name} org-repos) diff))))
+          (str "- " (diff-to-comment gems-org (some #{name} org-repos) diff))))
        (str/join "\n")))

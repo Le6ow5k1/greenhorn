@@ -52,7 +52,7 @@
       (is (= result ""))))
   )
 
-(deftest diff-to-markdown-test
+(deftest diff-to-comment-test
   (with-redefs [greenhorn.github.api/compare-commits (fn [& args]
                                                        {:commits [{:url "http://url.com" :message "commit message"}] :total 1})]
     (testing "when gem is updated"
@@ -65,20 +65,20 @@
                                    :branch nil}]])
 
       (testing "when gem repo exists in organization"
-        (let [result (diff-to-markdown "rails" true updated-diff)]
+        (let [result (diff-to-comment "rails" true updated-diff)]
           (is (= result
                  (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
                       "  - [`commit message`](http://url.com)")))))
 
       (testing "when gem repo exist in organization and both remotes pointing to github"
         (let [diff (assoc-in updated-diff [1 0 :remote] "git@github.com:rails/rails.git")
-              result (diff-to-markdown "rails" true diff)]
+              result (diff-to-comment "rails" true diff)]
           (is (= result
                  (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
                       "  - [`commit message`](http://url.com)")))))
 
       (testing "when gem repo doesn't exist in organization and remote not pointing to github"
-        (let [result (diff-to-markdown "rails" false updated-diff)]
+        (let [result (diff-to-comment "rails" false updated-diff)]
           (is (= result
                  "**rails** has been updated v3.1.0...131df50"))))
       )
@@ -88,30 +88,30 @@
                                 {:version "3.1.0"
                                  :remote "https://rubygems.org/"}]])
 
-      (let [result (diff-to-markdown "rails" true added-diff)]
+      (let [result (diff-to-comment "rails" true added-diff)]
         (is (= result
                "**rails** has been added [v3.1.0](https://github.com/rails/rails/tree/v3.1.0)")))
 
       (testing "when gem doesn't exist in organization"
-        (let [result (diff-to-markdown "rails" nil added-diff)]
+        (let [result (diff-to-comment "rails" nil added-diff)]
           (is (= result "**rails** has been added v3.1.0"))))
       )
     )
 
   (testing "when there are no compare commits"
     (with-redefs [greenhorn.github.api/compare-commits (fn [& args] {:commits [] :total 0 :status "ahead"})]
-      (let [result (diff-to-markdown "rails" true updated-diff)]
+      (let [result (diff-to-comment "rails" true updated-diff)]
         (is (= result (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)"
                            "\n:exclamation: no commits found for diff"))))))
 
   (testing "when there are no compare commits and diff's head is behind base"
     (with-redefs [greenhorn.github.api/compare-commits (fn [& args] {:commits [] :total 0 :status "behind"})]
-      (let [result (diff-to-markdown "rails" true updated-diff)]
+      (let [result (diff-to-comment "rails" true updated-diff)]
         (is (= result (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)"
                            "\n:arrow_down: this is a downgrade"))))))
   )
 
-(deftest diffs-to-markdown-test
+(deftest diffs-to-comment-test
   (def diffs {"rails" [{:version "3.1.0"
                         :remote "https://rubygems.org/"}
                        {:version "3.1.12"
@@ -136,7 +136,7 @@
   (with-redefs [greenhorn.github.api/compare-commits (fn [& args]
                                                        {:commits [{:url "http://url.com" :message "commit message"}] :total 1})]
     (testing "happy path"
-      (let [result (diffs-to-markdown "rails" ["rails" "jbuilder"] diffs)]
+      (let [result (diffs-to-comment "rails" ["rails" "jbuilder"] diffs)]
         (is (= result
                (str "- **jbuilder** has been updated [e0986b3...131df50](https://github.com/rails/jbuilder/compare/e0986b3...131df50)\n"
                     "  - [`commit message`](http://url.com)\n"
