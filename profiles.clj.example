@@ -1,12 +1,12 @@
 {:dev  {:env {
               :database-url "postgresql://postgres@postgres:5432/greenhorn_dev"
-              :github-user "XXXXX"
-              :github-token "XXXXX"
+              :github-user "xxx"
+              :github-token "xxx"
               }
         }
  :test {:env {
-              :database-url "postgresql://postgres@postgres:5432/greenhorn_test"
-              :github-user "XXXXX"
-              :github-token "XXXXX"}
+              :database-url "postgresql://postgres@postgres:5432/greenhorn_dev"
+              :github-user "xxx"
+              :github-token "xxx"}
         }
  }
