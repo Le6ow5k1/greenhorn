@@ -30,10 +30,7 @@
         significant-commits (->> commits
                                  reverse
                                  (remove merge-commit?))
-        result-commits (->> significant-commits
-                            (take limit)
-                            (mapv (fn [{:keys [html_url commit]}]
-                                    {:url html_url :message (commit :message)})))]
+        result-commits (take limit significant-commits)]
     {:commits result-commits :total (count significant-commits) :status status}))
 
 (defn get-file [url & options]

@@ -30,19 +30,23 @@
 (defn- escape-markdown-code [s]
   (str/replace s #"`" "``"))
 
-(defn commit-to-markdown [{:keys [url message]}]
+(defn- author-avatar [avatar-url]
+  (format "<img height=\"16\" src=\"%s?v=3&amp;s=32\" width=\"16\">" avatar-url))
+
+(defn commit-to-markdown [{url :html_url {avatar-url :avatar_url} :author {:keys [message]} :commit}]
   (let [[header body] (str/split message #"\n" 2)
-        escaped-header (escape-markdown-code header)]
+        escaped-header (escape-markdown-code header)
+        avatar (author-avatar avatar-url)]
     (if body
       (let [jira-urls (jira-urls body)]
         (if (not-empty jira-urls)
-          (format "  - [`%s`](%s) | %s" escaped-header url jira-urls)
-          (format "  - [`%s`](%s)" escaped-header url)))
-      (format "  - [`%s`](%s)" escaped-header url))))
+          (format "  %s [`%s`](%s) | %s" avatar escaped-header url jira-urls)
+          (format "  %s [`%s`](%s)" avatar escaped-header url)))
+      (format "  %s [`%s`](%s)" avatar escaped-header url))))
 
 (defn- add-over-limit-text-if-needed [over-limit-count commit-comments]
   (if (> over-limit-count 0)
-    (conj commit-comments (str "  - ... and " over-limit-count " more significant commit(s)"))
+    (conj commit-comments (str "  ... and " over-limit-count " more significant commit(s)"))
     commit-comments))
 
 (defn commits-to-markdown [commits total]

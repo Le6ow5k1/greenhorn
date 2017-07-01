@@ -5,47 +5,77 @@
 
 (deftest commit-to-markdown-test
   (testing "when message without body"
-    (let [result (commit-to-markdown {:url "http://url.com" :message "Header of commit message"})]
-      (is (= result "  - [`Header of commit message`](http://url.com)"))))
+    (let [result (commit-to-markdown {:html_url "http://url.com"
+                                      :author {:avatar_url "https://avatars/1.gif"}
+                                      :commit {:message "Header of commit message"}})]
+      (is (= result (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                         "[`Header of commit message`](http://url.com)")))))
 
   (testing "when message with body"
-    (let [result (commit-to-markdown {:url "http://url.com" :message "Header of commit message\n\nBody of commit"})]
-      (is (= result "  - [`Header of commit message`](http://url.com)"))))
+    (let [result (commit-to-markdown {:html_url "http://url.com"
+                                      :author {:avatar_url "https://avatars/1.gif"}
+                                      :commit {:message "Header of commit message\n\nBody of commit"}})]
+      (is (= result (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                         "[`Header of commit message`](http://url.com)")))))
 
   (testing "when there is no blank line between header and body"
-    (let [result (commit-to-markdown {:url "http://url.com" :message "Header of commit message\nBody of commit"})]
-      (is (= result "  - [`Header of commit message`](http://url.com)"))))
+    (let [result (commit-to-markdown {:html_url "http://url.com"
+                                      :author {:avatar_url "https://avatars/1.gif"}
+                                      :commit {:message "Header of commit message\nBody of commit"}})]
+      (is (= result (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                         "[`Header of commit message`](http://url.com)")))))
 
   (testing "when there is markdown code in header"
-    (let [result (commit-to-markdown {:url "http://url.com" :message "Header `code` of commit message"})]
-      (is (= result "  - [`Header ``code`` of commit message`](http://url.com)"))))
+    (let [result (commit-to-markdown {:html_url "http://url.com"
+                                      :author {:avatar_url "https://avatars/1.gif"}
+                                      :commit {:message "Header `code` of commit message"}})]
+      (is (= result (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                         "[`Header ``code`` of commit message`](http://url.com)")))))
 
   (testing "when message with a link to jira"
-    (let [result (commit-to-markdown {:url "http://url.com" :message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18"})]
-      (is (= result "  - [`Header of commit message`](http://url.com) | [A4-18](https://jira.com/browse/A4-18)"))))
+    (let [result (commit-to-markdown {:html_url "http://url.com"
+                                      :author {:avatar_url "https://avatars/1.gif"}
+                                      :commit {:message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18"}})]
+      (is (= result (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                         "[`Header of commit message`](http://url.com) | [A4-18](https://jira.com/browse/A4-18)")))))
 
   (testing "when message with links to jira"
     (let [message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18\nhttps://jira.com/browse/A5-18"
-          result (commit-to-markdown {:url "http://url.com" :message message})]
+          result (commit-to-markdown {:html_url "http://url.com"
+                                      :author {:avatar_url "https://avatars/1.gif"}
+                                      :commit {:message message}})]
       (is (= result
-             "  - [`Header of commit message`](http://url.com) | [A4-18](https://jira.com/browse/A4-18), [A5-18](https://jira.com/browse/A5-18)"))))
+             (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                  "[`Header of commit message`](http://url.com) | [A4-18](https://jira.com/browse/A4-18), [A5-18](https://jira.com/browse/A5-18)")))))
   )
 
 (deftest commits-to-markdown-test
   (testing "when there are less messages then total commits"
-    (let [result (commits-to-markdown [{:url "http://url.com" :message "message 1"}
-                                       {:url "http://url.com" :message "message 2"}] 2)]
+    (let [result (commits-to-markdown [{:html_url "http://url.com"
+                                        :author {:avatar_url "https://avatars/1.gif"}
+                                        :commit {:message "message 1"}}
+                                       {:html_url "http://url.com"
+                                        :author {:avatar_url "https://avatars/1.gif"}
+                                        :commit {:message "message 2"}}] 2)]
       (is (= result
-             (str "  - [`message 1`](http://url.com)\n"
-                  "  - [`message 2`](http://url.com)")))))
+             (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                  "[`message 1`](http://url.com)\n"
+                  "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                  "[`message 2`](http://url.com)")))))
 
   (testing "when there are more messages then total commits"
-    (let [result (commits-to-markdown [{:url "http://url.com" :message "message 1"}
-                                       {:url "http://url.com" :message "message 2"}] 4)]
+    (let [result (commits-to-markdown [{:html_url "http://url.com"
+                                        :author {:avatar_url "https://avatars/1.gif"}
+                                        :commit {:message "message 1"}}
+                                       {:html_url "http://url.com"
+                                        :author {:avatar_url "https://avatars/1.gif"}
+                                        :commit {:message "message 2"}}] 4)]
       (is (= result
-             (str "  - [`message 1`](http://url.com)\n"
-                  "  - [`message 2`](http://url.com)\n"
-                  "  - ... and 2 more significant commit(s)")))))
+             (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                  "[`message 1`](http://url.com)\n"
+                  "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                  "[`message 2`](http://url.com)\n"
+                  "  ... and 2 more significant commit(s)")))))
 
   (testing "when there are no messages"
     (let [result (commits-to-markdown [] 0)]
@@ -54,7 +84,9 @@
 
 (deftest diff-to-comment-test
   (with-redefs [greenhorn.github.api/compare-commits (fn [& args]
-                                                       {:commits [{:url "http://url.com" :message "commit message"}] :total 1})]
+                                                       {:commits [{:html_url "http://url.com"
+                                                                   :author {:avatar_url "https://avatars/1.gif"}
+                                                                   :commit {:message "commit message"}}] :total 1})]
     (testing "when gem is updated"
       (def updated-diff ["rails" [{:version "3.1.0"
                                    :remote "https://rubygems.org/"}
@@ -68,14 +100,16 @@
         (let [result (diff-to-comment "rails" true updated-diff)]
           (is (= result
                  (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
-                      "  - [`commit message`](http://url.com)")))))
+                      "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                      "[`commit message`](http://url.com)")))))
 
       (testing "when gem repo exist in organization and both remotes pointing to github"
         (let [diff (assoc-in updated-diff [1 0 :remote] "git@github.com:rails/rails.git")
               result (diff-to-comment "rails" true diff)]
           (is (= result
                  (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
-                      "  - [`commit message`](http://url.com)")))))
+                      "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                      "[`commit message`](http://url.com)")))))
 
       (testing "when gem repo doesn't exist in organization and remote not pointing to github"
         (let [result (diff-to-comment "rails" false updated-diff)]
@@ -134,13 +168,17 @@
                        :remote "https://rubygems.org/"}]})
 
   (with-redefs [greenhorn.github.api/compare-commits (fn [& args]
-                                                       {:commits [{:url "http://url.com" :message "commit message"}] :total 1})]
+                                                       {:commits [{:html_url "http://url.com"
+                                                                   :author {:avatar_url "https://avatars/1.gif"}
+                                                                   :commit {:message "commit message"}}] :total 1})]
     (testing "happy path"
       (let [result (diffs-to-comment "rails" ["rails" "jbuilder"] diffs)]
         (is (= result
                (str "- **jbuilder** has been updated [e0986b3...131df50](https://github.com/rails/jbuilder/compare/e0986b3...131df50)\n"
-                    "  - [`commit message`](http://url.com)\n"
+                    "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                    "[`commit message`](http://url.com)\n"
                     "- **puma** has been added v3.6.2\n"
                     "- **rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)\n"
-                    "  - [`commit message`](http://url.com)"))))))
+                    "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                    "[`commit message`](http://url.com)"))))))
   )
