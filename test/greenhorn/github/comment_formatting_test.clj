@@ -39,7 +39,7 @@
       (is (= result (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
                          "[`Header of commit message`](http://url.com) | [A4-18](https://jira.com/browse/A4-18)")))))
 
-  (testing "when message with links to jira"
+  (testing "when message with multiple links to jira separated by return"
     (let [message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18\nhttps://jira.com/browse/A5-18"
           result (commit-to-markdown {:html_url "http://url.com"
                                       :author {:avatar_url "https://avatars/1.gif"}
@@ -47,6 +47,22 @@
       (is (= result
              (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
                   "[`Header of commit message`](http://url.com) | [A4-18](https://jira.com/browse/A4-18), [A5-18](https://jira.com/browse/A5-18)")))))
+
+  (testing "when message with multiple links to jira separated by whitespace"
+    (let [message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18 https://jira.com/browse/A5-18"
+          result (commit-to-markdown {:html_url "http://url.com"
+                                      :author {:avatar_url "https://avatars/1.gif"}
+                                      :commit {:message message}})]
+      (is (= result
+             (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                  "[`Header of commit message`](http://url.com) | [A4-18](https://jira.com/browse/A4-18), [A5-18](https://jira.com/browse/A5-18)")))))
+
+  (testing "when avatar_url is missing"
+    (let [result (commit-to-markdown {:html_url "http://url.com"
+                                      :author {:avatar_url nil}
+                                      :commit {:message "Header of commit message"}})]
+      (is (= result (str "  <img height=\"16\" src=\"https://i2.wp.com/assets-cdn.github.com/images/gravatars/gravatar-user-420.png?v=3&amp;s=32\" width=\"16\"> "
+                         "[`Header of commit message`](http://url.com)")))))
   )
 
 (deftest commits-to-markdown-test

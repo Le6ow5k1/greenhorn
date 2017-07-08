@@ -4,6 +4,7 @@
             [taoensso.timbre :as timbre]))
 
 (def html-url (str "https://github.com/"))
+(def anonymous-user-avatar-url "https://i2.wp.com/assets-cdn.github.com/images/gravatars/gravatar-user-420.png")
 
 (defn- gem-name-and-remote-matches? [name remote]
   (let [[_ name-from-remote] (re-matches #".*\/([^\/]+).git$" remote)]
@@ -24,14 +25,15 @@
   (format "[%s](%s)" (re-find #"[^\/]+$" url) url))
 
 (defn- jira-urls [commit-body]
-  (let [jira-urls (re-seq #"https?:\/{2}.*jira[\/\.\w-]+" commit-body)]
+  (let [jira-urls (re-seq #"https?:\/{2}[\w-]*jira[\/\.\S]+" commit-body)]
     (->> jira-urls (map shorten-url) (str/join ", "))))
 
 (defn- escape-markdown-code [s]
   (str/replace s #"`" "``"))
 
 (defn- author-avatar [avatar-url]
-  (format "<img height=\"16\" src=\"%s?v=3&amp;s=32\" width=\"16\">" avatar-url))
+  (let [url (or avatar-url anonymous-user-avatar-url)]
+    (format "<img height=\"16\" src=\"%s?v=3&amp;s=32\" width=\"16\">" url)))
 
 (defn commit-to-markdown [{url :html_url {avatar-url :avatar_url} :author {:keys [message]} :commit}]
   (let [[header body] (str/split message #"\n" 2)
