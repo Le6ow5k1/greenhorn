@@ -73,14 +73,20 @@
       (handle-pull project pull stored-pull)
       (handle-pull project pull))))
 
+(defn- need-handle-webhook?
+  [{:keys [action changes pull_request]}]
+  (and pull_request
+       (or
+        (contains? #{"opened" "reopened" "synchronize"} action)
+        (and (= action "edited") (contains? changes :base)))))
+
 (defn handle-pull-webhook
-  "Start asynchronous handling of a pull_request event"
-  [{action :action pull :pull_request}]
+  [{action :action pull :pull_request :as event-data}]
   (let [{pull-num :number merge-commit-sha :merge_commit_sha {{full-name :full_name} :repo} :base} pull
         {project-id :id :as project} (db/find-project-by {:full_name full-name})
         pull-persisted? (db/find-pull project-id pull-num)
         enqueue-delay (if pull-persisted? 3000 8000)]
-    (if (and project pull (#{"opened" "reopened" "synchronize"} action))
+    (if (and project (need-handle-webhook? event-data))
       ;; We are asking github API up to 3 times until merge commit for this pull-request becomes available.
       (bg/submit-job
        {:enqueue-delay enqueue-delay :retry-limit 2 :retry-delay 5000}
