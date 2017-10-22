@@ -5,6 +5,7 @@
 
 (def html-url (str "https://github.com/"))
 (def anonymous-user-avatar-url "https://i2.wp.com/assets-cdn.github.com/images/gravatars/gravatar-user-420.png")
+(def visible-commits-limit 10)
 
 (defn- gem-name-and-remote-matches? [name remote]
   (let [[_ name-from-remote] (re-matches #".*\/([^\/]+).git$" remote)]
@@ -21,12 +22,12 @@
 (defn- compare-url [gem-url old-gem new-gem]
   (str gem-url "/compare/" (compare-str old-gem new-gem)))
 
-(defn- shorten-url [url]
+(defn- shorten-link [url]
   (format "[%s](%s)" (re-find #"[^\/]+$" url) url))
 
-(defn- jira-urls [commit-body]
-  (let [jira-urls (re-seq #"https?:\/{2}[\w-]*jira[\/\.\S]+" commit-body)]
-    (->> jira-urls (map shorten-url) (str/join ", "))))
+(defn- extract-links [commit-body]
+  (let [links (re-seq #"https?:\/{2}[\w-]*[\/\.\S]+" commit-body)]
+    (->> links (map shorten-link) (str/join ", "))))
 
 (defn- author-avatar [avatar-url]
   (let [url (or avatar-url anonymous-user-avatar-url)]
@@ -36,28 +37,28 @@
   (let [[header body] (str/split message #"\n" 2)
         avatar (author-avatar avatar-url)]
     (if body
-      (let [jira-urls (jira-urls body)]
-        (if (not-empty jira-urls)
-          (format "  %s [`` %s ``](%s) | %s" avatar header url jira-urls)
+      (let [links (extract-links body)]
+        (if (not-empty links)
+          (format "  %s [`` %s ``](%s) • %s" avatar header url links)
           (format "  %s [`` %s ``](%s)" avatar header url)))
       (format "  %s [`` %s ``](%s)" avatar header url))))
 
-(defn- add-over-limit-text-if-needed [over-limit-count commit-comments]
-  (if (> over-limit-count 0)
-    (conj commit-comments (str "  ... and " over-limit-count " more significant commit(s)"))
-    commit-comments))
+(defn commits-to-markdown [commits]
+  (let [over-limit-count (- (count commits) visible-commits-limit)
+        commits-part (->> commits
+                          (take visible-commits-limit)
+                          (mapv commit-to-markdown)
+                          (str/join "\n"))]
+    (if (<= over-limit-count 0)
+      commits-part
+      (str commits-part
+           "\n"
+           "  ... and " over-limit-count " more significant commit(s)"))))
 
-(defn commits-to-markdown [commits total]
-  (let [over-limit-count (- total (count commits))]
-    (->> commits
-         (mapv commit-to-markdown)
-         (add-over-limit-text-if-needed over-limit-count)
-         (str/join "\n"))))
-
-(defn- build-commit-messages-part [commits total status]
+(defn- build-commit-messages-part [commits status]
   (cond
     (= status "behind") "\n:arrow_down: this is a downgrade"
-    (not-empty commits) (str "\n" (commits-to-markdown commits total))
+    (not-empty commits) (str "\n" (commits-to-markdown commits))
     :else "\n:exclamation: no commits found for diff"))
 
 (defn- gem-updated-comment [name gem-url old-gem new-gem]
@@ -65,17 +66,17 @@
     (if gem-url
       (let [compare-url (compare-url gem-url old-gem new-gem)
             [_ org repo base head] (re-matches #"^.+\/([^\/]+)\/([^\/]+)\/compare\/(.+)\.{3}(.+)$" compare-url)
-            {:keys [commits total status]} (api/compare-commits org repo base head)
-            commit-messages-part (build-commit-messages-part commits total status)]
+            {:keys [commits status]} (api/compare-commits org repo base head)
+            commit-messages-part (build-commit-messages-part commits status)]
         (str gem-updated-part " "
-             (shorten-url compare-url)
+             (shorten-link compare-url)
              commit-messages-part))
       (str gem-updated-part " " (compare-str old-gem new-gem)))))
 
 (defn- gem-added-comment [name gem-url gem-spec]
   (if gem-url
     (let [gem-ref-url (str gem-url "/tree/" (gem-ref gem-spec))]
-      (format "**%s** has been added %s" name (shorten-url gem-ref-url)))
+      (format "**%s** has been added %s" name (shorten-link gem-ref-url)))
     (format "**%s** has been added %s" name (gem-ref gem-spec))))
 
 (defn- gem-url-from-remote

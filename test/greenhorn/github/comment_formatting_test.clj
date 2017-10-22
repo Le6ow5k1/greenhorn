@@ -37,7 +37,7 @@
                                       :author {:avatar_url "https://avatars/1.gif"}
                                       :commit {:message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18"}})]
       (is (= result (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
-                         "[`` Header of commit message ``](http://url.com) | [A4-18](https://jira.com/browse/A4-18)")))))
+                         "[`` Header of commit message ``](http://url.com) • [A4-18](https://jira.com/browse/A4-18)")))))
 
   (testing "when message with multiple links to jira separated by return"
     (let [message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18\nhttps://jira.com/browse/A5-18"
@@ -46,7 +46,7 @@
                                       :commit {:message message}})]
       (is (= result
              (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
-                  "[`` Header of commit message ``](http://url.com) | [A4-18](https://jira.com/browse/A4-18), [A5-18](https://jira.com/browse/A5-18)")))))
+                  "[`` Header of commit message ``](http://url.com) • [A4-18](https://jira.com/browse/A4-18), [A5-18](https://jira.com/browse/A5-18)")))))
 
   (testing "when message with multiple links to jira separated by whitespace"
     (let [message "Header of commit message\n\nBody of commit\nhttps://jira.com/browse/A4-18 https://jira.com/browse/A5-18"
@@ -55,7 +55,7 @@
                                       :commit {:message message}})]
       (is (= result
              (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
-                  "[`` Header of commit message ``](http://url.com) | [A4-18](https://jira.com/browse/A4-18), [A5-18](https://jira.com/browse/A5-18)")))))
+                  "[`` Header of commit message ``](http://url.com) • [A4-18](https://jira.com/browse/A4-18), [A5-18](https://jira.com/browse/A5-18)")))))
 
   (testing "when avatar_url is missing"
     (let [result (commit-to-markdown {:html_url "http://url.com"
@@ -66,35 +66,34 @@
   )
 
 (deftest commits-to-markdown-test
-  (testing "when there are less messages then total commits"
+  (testing "when number of commits don't exceed limit"
     (let [result (commits-to-markdown [{:html_url "http://url.com"
                                         :author {:avatar_url "https://avatars/1.gif"}
                                         :commit {:message "message 1"}}
                                        {:html_url "http://url.com"
                                         :author {:avatar_url "https://avatars/1.gif"}
-                                        :commit {:message "message 2"}}] 2)]
+                                        :commit {:message "message 2"}}])]
       (is (= result
              (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
                   "[`` message 1 ``](http://url.com)\n"
                   "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
                   "[`` message 2 ``](http://url.com)")))))
 
-  (testing "when there are more messages then total commits"
-    (let [result (commits-to-markdown [{:html_url "http://url.com"
-                                        :author {:avatar_url "https://avatars/1.gif"}
-                                        :commit {:message "message 1"}}
-                                       {:html_url "http://url.com"
-                                        :author {:avatar_url "https://avatars/1.gif"}
-                                        :commit {:message "message 2"}}] 4)]
-      (is (= result
-             (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
-                  "[`` message 1 ``](http://url.com)\n"
-                  "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
-                  "[`` message 2 ``](http://url.com)\n"
-                  "  ... and 2 more significant commit(s)")))))
+  (testing "when number of commits exceed limit"
+    (with-redefs [greenhorn.github.comment-formatting/visible-commits-limit 1]
+      (let [result (commits-to-markdown [{:html_url "http://url.com"
+                                          :author {:avatar_url "https://avatars/1.gif"}
+                                          :commit {:message "message 1"}}
+                                         {:html_url "http://url.com"
+                                          :author {:avatar_url "https://avatars/1.gif"}
+                                          :commit {:message "message 2"}}])]
+        (is (= result
+               (str "  <img height=\"16\" src=\"https://avatars/1.gif?v=3&amp;s=32\" width=\"16\"> "
+                    "[`` message 1 ``](http://url.com)\n"
+                    "  ... and 1 more significant commit(s)"))))))
 
   (testing "when there are no messages"
-    (let [result (commits-to-markdown [] 0)]
+    (let [result (commits-to-markdown [])]
       (is (= result ""))))
   )
 
