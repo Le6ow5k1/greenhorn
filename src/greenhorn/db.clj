@@ -20,7 +20,7 @@
 (defn add-merge-commit-to-pull [project-id num merge-commit]
   (jdbc/execute!
    db-uri
-   ["update pulls set merge_commits = array_append(merge_commits, '?') where project-id = ? and num = ?"
+   ["update pulls set merge_commits = array_append(merge_commits, ?) where project_id = ? and num = ?"
     merge-commit
     project-id
     num]))
