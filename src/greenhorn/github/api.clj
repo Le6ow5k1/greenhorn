@@ -24,11 +24,11 @@
 (defn compare-commits
   [org repo base head]
   (let [response (repos-api/compare-commits org repo base head {:auth http-basic-auth-str})
-        {:keys [commits status] :or {commits []}} response
+        {:keys [commits status behind_by] :or {commits []}} response
         commits (->> commits
                      reverse
                      (remove merge-commit?))]
-    {:commits commits :status status}))
+    {:commits commits :status status :behind-by behind_by}))
 
 (defn get-file [url & options]
   (let [default-options {:accept "application/vnd.github.v3.raw" :basic-auth http-basic-auth-str}

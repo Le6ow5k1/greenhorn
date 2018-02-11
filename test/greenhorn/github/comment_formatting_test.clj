@@ -151,13 +151,13 @@
     (with-redefs [greenhorn.github.api/compare-commits (fn [& args] {:commits [] :total 0 :status "ahead"})]
       (let [result (diff-to-comment "rails" true updated-diff)]
         (is (= result (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)"
-                           "\n:exclamation: no commits found for diff"))))))
+                           "\n:confused: no commits found for diff"))))))
 
   (testing "when there are no compare commits and diff's head is behind base"
-    (with-redefs [greenhorn.github.api/compare-commits (fn [& args] {:commits [] :total 0 :status "behind"})]
+    (with-redefs [greenhorn.github.api/compare-commits (fn [& args] {:commits [] :total 0 :behind-by 2})]
       (let [result (diff-to-comment "rails" true updated-diff)]
         (is (= result (str "**rails** has been updated [v3.1.0...131df50](https://github.com/rails/rails/compare/v3.1.0...131df50)"
-                           "\n:arrow_down: this is a downgrade"))))))
+                           "\n:open_mouth: 2 commits are missing"))))))
   )
 
 (deftest diffs-to-comment-test

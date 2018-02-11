@@ -55,19 +55,20 @@
            "\n"
            "  ... and " over-limit-count " more significant commit(s)"))))
 
-(defn- build-commit-messages-part [commits status]
+(defn- build-commit-messages-part [commits behind-by]
   (cond
-    (= status "behind") "\n:arrow_down: this is a downgrade"
+    (and behind-by (= behind-by 1)) (format "\n:open_mouth: %s commit is missing" behind-by)
+    (and behind-by (> behind-by 1)) (format "\n:open_mouth: %s commits are missing" behind-by)
     (not-empty commits) (str "\n" (commits-to-markdown commits))
-    :else "\n:exclamation: no commits found for diff"))
+    :else "\n:confused: no commits found for diff"))
 
 (defn- gem-updated-comment [name gem-url old-gem new-gem]
   (let [gem-updated-part (format "**%s** has been updated" name)]
     (if gem-url
       (let [compare-url (compare-url gem-url old-gem new-gem)
             [_ org repo base head] (re-matches #"^.+\/([^\/]+)\/([^\/]+)\/compare\/(.+)\.{3}(.+)$" compare-url)
-            {:keys [commits status]} (api/compare-commits org repo base head)
-            commit-messages-part (build-commit-messages-part commits status)]
+            {:keys [commits behind-by]} (api/compare-commits org repo base head)
+            commit-messages-part (build-commit-messages-part commits behind-by)]
         (str gem-updated-part " "
              (shorten-link compare-url)
              commit-messages-part))
