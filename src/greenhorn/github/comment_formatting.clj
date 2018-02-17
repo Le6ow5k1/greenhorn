@@ -1,11 +1,13 @@
 (ns greenhorn.github.comment-formatting
   (:require [clojure.string :as str]
             [greenhorn.github.api :as api]
+            [environ.core :refer [env]]
             [taoensso.timbre :as timbre]))
 
 (def html-url (str "https://github.com/"))
 (def anonymous-user-avatar-url "https://i2.wp.com/assets-cdn.github.com/images/gravatars/gravatar-user-420.png")
 (def visible-commits-limit 10)
+(def link-extraction-re (re-pattern (get env :link-extraction-re "https?:\\/{2}[\\w-]*[\\/\\.\\S]+")))
 
 (defn- gem-name-and-remote-matches? [name remote]
   (let [[_ name-from-remote] (re-matches #".*\/([^\/]+).git$" remote)]
@@ -23,10 +25,10 @@
   (str gem-url "/compare/" (compare-str old-gem new-gem)))
 
 (defn- shorten-link [url]
-  (format "[%s](%s)" (re-find #"[^\/]+$" url) url))
+  (format "[%s](%s)" (re-find #"[^\/\]\[\s]+$" url) url))
 
 (defn- extract-links [commit-body]
-  (let [links (re-seq #"https?:\/{2}[\w-]*[\/\.\S]+" commit-body)]
+  (let [links (re-seq link-extraction-re commit-body)]
     (->> links (map shorten-link) (str/join ", "))))
 
 (defn- author-avatar [avatar-url]

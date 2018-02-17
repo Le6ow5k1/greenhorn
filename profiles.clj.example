@@ -7,6 +7,7 @@
  :test {:env {
               :database-url "postgresql://postgres@postgres:5432/greenhorn_dev"
               :github-user "xxx"
-              :github-token "xxx"}
+              :github-token "xxx"
+              }
         }
  }

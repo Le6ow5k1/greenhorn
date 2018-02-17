@@ -4,8 +4,7 @@
             [environ.core :refer [env]]
             [cheshire.core :as json]
             [clj-http.client :as http]
-            [taoensso.timbre :as timbre]
-            [cemerick.url :refer [url] :rename {url parse-url}]))
+            [taoensso.timbre :as timbre]))
 
 (def ^:private token (env :github-token))
 (def ^:private user (env :github-user))
