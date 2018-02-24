@@ -10,10 +10,14 @@
     (str "v" version)))
 
 (defn- compare-str [old-gem new-gem]
-  (str (gem-ref old-gem) "..." (gem-ref new-gem)))
+  (let [old-ref (gem-ref old-gem)
+        new-ref (gem-ref new-gem)]
+    (when (and old-ref new-ref)
+      (str old-ref "..." new-ref))))
 
 (defn- compare-url [gem-url compare-str]
-  (str gem-url "/compare/" compare-str))
+  (when (not (empty? compare-str))
+    (str gem-url "/compare/" compare-str)))
 
 (defn- gem-status
   [old-gem new-gem]
@@ -26,7 +30,8 @@
   [compare-url old-gem new-gem]
   (if compare-url
     (let [[_ org repo base head] (re-matches #"^.+\/([^\/]+)\/([^\/]+)\/compare\/(.+)\.{3}(.+)$" compare-url)]
-      (api/compare-commits org repo base head))))
+      (api/compare-commits org repo base head)))
+  {:commits [] :behind-by nil})
 
 (defn- collect-gem-data
   "Returns map with information about gem update which then being used for creating comments.

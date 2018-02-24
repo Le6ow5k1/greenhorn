@@ -48,15 +48,13 @@
 
 (defn- gem-updated-comment
   [{:keys [name
-           old-gem
-           new-gem
            compare-str
            compare-url
            diff-commits
-           behind-by]}]
+           diff-behind-by]}]
   (let [gem-updated-part (format "**%s** has been updated" name)]
-    (if (not (empty? diff-commits))
-      (let [commit-messages-part (build-commit-messages-part diff-commits behind-by)]
+    (if compare-url
+      (let [commit-messages-part (build-commit-messages-part diff-commits diff-behind-by)]
         (str gem-updated-part " " (shorten-link compare-url) commit-messages-part))
       (str gem-updated-part " " compare-str))))
 
@@ -65,7 +63,7 @@
   (let [ref-url (and url (str url "/tree/" new-gem-ref))]
     (if ref-url
       (format "**%s** has been added %s" name (shorten-link ref-url))
-      (format "**%s** has been added %s" name))))
+      (format "**%s** has been added %s" name new-gem-ref))))
 
 (defn gem-data-to-comment
   [{:keys [name status] :as data}]
