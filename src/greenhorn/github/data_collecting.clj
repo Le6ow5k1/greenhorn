@@ -7,7 +7,8 @@
 (defn- gem-ref [{:keys [version revision]}]
   (if revision
     (->> revision (take 7) (apply str))
-    (str "v" version)))
+    (when version
+      (str "v" version))))
 
 (defn- compare-str [old-gem new-gem]
   (let [old-ref (gem-ref old-gem)
@@ -30,8 +31,8 @@
   [compare-url old-gem new-gem]
   (if compare-url
     (let [[_ org repo base head] (re-matches #"^.+\/([^\/]+)\/([^\/]+)\/compare\/(.+)\.{3}(.+)$" compare-url)]
-      (api/compare-commits org repo base head)))
-  {:commits [] :behind-by nil})
+      (api/compare-commits org repo base head))
+    {:commits [] :behind-by nil}))
 
 (defn- collect-gem-data
   "Returns map with information about gem update which then being used for creating comments.
@@ -85,7 +86,7 @@
 (defn gems-data
   "Returns a vector of maps containing needed information for describing gem update."
   [gems-org org-repos diffs]
-  (mapv (fn [diff]
+  (mapv (fn [[name _ :as diff]]
           (let [is-gem-repo-in-org? (some #{name} org-repos)
                 url (gem-url gems-org is-gem-repo-in-org? diff)]
             (collect-gem-data diff {:url url})))

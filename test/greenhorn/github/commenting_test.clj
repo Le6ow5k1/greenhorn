@@ -1,7 +1,6 @@
 (ns greenhorn.github.commenting-test
   (:require [greenhorn.github.commenting :refer :all]
-            [clojure.test :refer :all]
-            [taoensso.timbre :as timbre]))
+            [clojure.test :refer :all]))
 
 (deftest commit-to-markdown-test
   (testing "when message without body"
