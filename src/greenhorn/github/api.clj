@@ -23,7 +23,7 @@
 (defn compare-commits
   [org repo base head]
   (let [response (repos-api/compare-commits org repo base head {:auth http-basic-auth-str})
-        {:keys [commits status behind_by] :or {commits []}} response
+        {:keys [commits status behind_by] :or {commits [] status nil behind_by nil}} response
         commits (->> commits
                      reverse
                      (remove merge-commit?))]
